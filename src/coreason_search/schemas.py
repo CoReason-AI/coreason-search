@@ -11,7 +11,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RetrieverType(str, Enum):
@@ -22,17 +22,17 @@ class RetrieverType(str, Enum):
 
 class EmbeddingConfig(BaseModel):
     model_name: str = "Alibaba-NLP/gte-Qwen2-7B-instruct"
-    context_length: int = 32768
-    batch_size: int = 1
+    context_length: int = Field(default=32768, gt=0)
+    batch_size: int = Field(default=1, gt=0)
 
 
 class SearchRequest(BaseModel):
-    query: Union[str, Dict[str, str]]  # String for RAG, Dict for Boolean
-    strategies: List[RetrieverType]  # ["lance_dense", "lance_fts"]
+    query: Union[str, Dict[str, str]] = Field(..., description="String for RAG, Dict for Boolean")
+    strategies: List[RetrieverType] = Field(..., min_length=1, description="List of retrieval strategies to execute")
     fusion_enabled: bool = True
     rerank_enabled: bool = True
-    top_k: int = 5
-    filters: Optional[Dict[str, Any]] = None  # {"year": {"$gt": 2024}}
+    top_k: int = Field(default=5, gt=0, description="Number of results to return")
+    filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
 
 
 class Hit(BaseModel):

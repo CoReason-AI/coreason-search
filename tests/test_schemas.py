@@ -8,6 +8,8 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -41,6 +43,16 @@ class TestSchemas:
         assert config.context_length == 1024
         assert config.batch_size == 32
 
+    def test_embedding_config_validation(self) -> None:
+        """Test EmbeddingConfig validation for invalid values."""
+        with pytest.raises(ValidationError) as excinfo:
+            EmbeddingConfig(context_length=0)
+        assert "Input should be greater than 0" in str(excinfo.value)
+
+        with pytest.raises(ValidationError) as excinfo:
+            EmbeddingConfig(batch_size=-1)
+        assert "Input should be greater than 0" in str(excinfo.value)
+
     def test_search_request_valid_string_query(self) -> None:
         """Test SearchRequest with a string query."""
         request = SearchRequest(
@@ -68,7 +80,42 @@ class TestSchemas:
         assert request.top_k == 10
         assert request.filters == {"year": 2024}
 
-    def test_search_request_invalid(self) -> None:
+    def test_search_request_invalid_strategies(self) -> None:
+        """Test SearchRequest validation failure for empty strategies."""
+        with pytest.raises(ValidationError) as excinfo:
+            SearchRequest(
+                query="test",
+                strategies=[],  # Empty list
+            )
+        assert "List should have at least 1 item" in str(excinfo.value)
+
+    def test_search_request_invalid_top_k(self) -> None:
+        """Test SearchRequest validation failure for invalid top_k."""
+        with pytest.raises(ValidationError) as excinfo:
+            SearchRequest(
+                query="test",
+                strategies=[RetrieverType.LANCE_DENSE],
+                top_k=0,
+            )
+        assert "Input should be greater than 0" in str(excinfo.value)
+
+    def test_search_request_complex_filters(self) -> None:
+        """Test SearchRequest with complex nested filters."""
+        filters: dict[str, Any] = {
+            "and": [
+                {"year": {"$gt": 2020}},
+                {"author": "Smith"},
+                {"tags": {"$in": ["AI", "ML"]}},
+            ]
+        }
+        request = SearchRequest(
+            query="test",
+            strategies=[RetrieverType.LANCE_DENSE],
+            filters=filters,
+        )
+        assert request.filters == filters
+
+    def test_search_request_missing_required(self) -> None:
         """Test SearchRequest validation failure."""
         with pytest.raises(ValidationError):
             # strategies is required
