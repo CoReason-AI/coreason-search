@@ -31,6 +31,7 @@ class SearchRequest(BaseModel):
     strategies: List[RetrieverType] = Field(..., min_length=1, description="List of retrieval strategies to execute")
     fusion_enabled: bool = True
     rerank_enabled: bool = True
+    distill_enabled: bool = Field(default=True, description="Enable The Scout context distillation")
     top_k: int = Field(default=5, gt=0, description="Number of results to return")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
 
@@ -38,6 +39,8 @@ class SearchRequest(BaseModel):
 class Hit(BaseModel):
     doc_id: str
     content: str
+    original_text: str = Field(..., description="Full text")
+    distilled_text: str = Field(..., description="Post-Scout text")
     score: float
     source_strategy: str  # "dense" or "sparse"
     metadata: Dict[str, Any]
