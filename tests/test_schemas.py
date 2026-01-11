@@ -65,6 +65,26 @@ def test_search_request_validation() -> None:
         SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], top_k=0)
 
 
+def test_search_request_complex_types() -> None:
+    """Test SearchRequest with complex/edge case types."""
+    # Boolean query (Dict)
+    # The schema specifies Dict[str, str], so values must be strings.
+    # Recursive boolean logic (lists/nested dicts) is not supported by this specific schema field yet.
+    boolean_query = {"title": "Aspirin", "abstract": "Headache"}
+    req_bool = SearchRequest(query=boolean_query, strategies=[RetrieverType.LANCE_FTS])
+    assert req_bool.query == boolean_query
+
+    # Complex Filters
+    complex_filters = {
+        "year": {"$gt": 2020},
+        "tags": ["medical", "urgent"],
+        "is_active": True,
+        "nested": {"key": "value"},
+    }
+    req_filters = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], filters=complex_filters)
+    assert req_filters.filters == complex_filters
+
+
 def test_hit_schema() -> None:
     """Test Hit schema structure."""
     hit = Hit(
@@ -80,6 +100,35 @@ def test_hit_schema() -> None:
     assert hit.original_text == "full text original"
     assert hit.distilled_text == "distilled"
     assert hit.metadata["year"] == 2024
+
+
+def test_hit_edge_cases() -> None:
+    """Test Hit schema with edge cases."""
+    # Unicode and Emoji
+    unicode_text = "こんにちは 🌍"
+    hit = Hit(
+        doc_id="uni-1",
+        content=unicode_text,
+        original_text=unicode_text,
+        distilled_text=unicode_text,
+        score=0.0,
+        source_strategy="test",
+        metadata={"author": "José"},
+    )
+    assert hit.original_text == unicode_text
+
+    # Large metadata
+    large_meta = {f"k{i}": i for i in range(100)}
+    hit_large = Hit(
+        doc_id="large-1",
+        content="c",
+        original_text="o",
+        distilled_text="d",
+        score=1.0,
+        source_strategy="s",
+        metadata=large_meta,
+    )
+    assert len(hit_large.metadata) == 100
 
 
 def test_search_response_schema() -> None:
