@@ -11,6 +11,7 @@ packages = [{include = "coreason_search", from = "src"}]
 python = ">=3.12, <3.15"
 loguru = "^0.7.2"
 pydantic = "^2.12.5"
+numpy = "^2.4.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
