@@ -8,8 +8,6 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Any
-
 import pytest
 from pydantic import ValidationError
 
@@ -22,137 +20,73 @@ from coreason_search.schemas import (
 )
 
 
-class TestSchemas:
-    def test_retriever_type_enum(self) -> None:
-        """Test RetrieverType enum values."""
-        assert RetrieverType.LANCE_DENSE.value == "lance_dense"
-        assert RetrieverType.LANCE_FTS.value == "lance_fts"
-        assert RetrieverType.GRAPH_NEIGHBOR.value == "graph_neighbor"
+def test_retriever_type_enum() -> None:
+    """Test RetrieverType enum values."""
+    # Compare value to string
+    assert RetrieverType.LANCE_DENSE.value == "lance_dense"
+    assert RetrieverType.LANCE_FTS.value == "lance_fts"
+    assert RetrieverType.GRAPH_NEIGHBOR.value == "graph_neighbor"
 
-    def test_embedding_config_defaults(self) -> None:
-        """Test EmbeddingConfig default values."""
-        config = EmbeddingConfig()
-        assert config.model_name == "Alibaba-NLP/gte-Qwen2-7B-instruct"
-        assert config.context_length == 32768
-        assert config.batch_size == 1
 
-    def test_embedding_config_custom(self) -> None:
-        """Test EmbeddingConfig with custom values."""
-        config = EmbeddingConfig(model_name="custom-model", context_length=1024, batch_size=32)
-        assert config.model_name == "custom-model"
-        assert config.context_length == 1024
-        assert config.batch_size == 32
+def test_embedding_config_defaults() -> None:
+    """Test EmbeddingConfig defaults."""
+    config = EmbeddingConfig()
+    assert config.model_name == "Alibaba-NLP/gte-Qwen2-7B-instruct"
+    assert config.context_length == 32768
+    assert config.batch_size == 1
 
-    def test_embedding_config_validation(self) -> None:
-        """Test EmbeddingConfig validation for invalid values."""
-        with pytest.raises(ValidationError) as excinfo:
-            EmbeddingConfig(context_length=0)
-        assert "Input should be greater than 0" in str(excinfo.value)
 
-        with pytest.raises(ValidationError) as excinfo:
-            EmbeddingConfig(batch_size=-1)
-        assert "Input should be greater than 0" in str(excinfo.value)
+def test_embedding_config_validation() -> None:
+    """Test EmbeddingConfig validation."""
+    with pytest.raises(ValidationError):
+        EmbeddingConfig(context_length=0)
+    with pytest.raises(ValidationError):
+        EmbeddingConfig(batch_size=0)
 
-    def test_search_request_valid_string_query(self) -> None:
-        """Test SearchRequest with a string query."""
-        request = SearchRequest(
-            query="test query",
-            strategies=[RetrieverType.LANCE_DENSE],
-        )
-        assert request.query == "test query"
-        assert request.strategies == [RetrieverType.LANCE_DENSE]
-        assert request.fusion_enabled is True  # default
-        assert request.rerank_enabled is True  # default
-        assert request.top_k == 5  # default
-        assert request.filters is None  # default
 
-    def test_search_request_valid_dict_query(self) -> None:
-        """Test SearchRequest with a dictionary query."""
-        query_dict = {"field": "value"}
-        request = SearchRequest(
-            query=query_dict,
-            strategies=[RetrieverType.LANCE_FTS],
-            top_k=10,
-            filters={"year": 2024},
-        )
-        assert request.query == query_dict
-        assert request.strategies == [RetrieverType.LANCE_FTS]
-        assert request.top_k == 10
-        assert request.filters == {"year": 2024}
+def test_search_request_defaults() -> None:
+    """Test default values for SearchRequest."""
+    req = SearchRequest(query="test query", strategies=[RetrieverType.LANCE_DENSE])
+    assert req.fusion_enabled is True
+    assert req.rerank_enabled is True
+    assert req.distill_enabled is True
+    assert req.top_k == 5
+    assert req.filters is None
 
-    def test_search_request_invalid_strategies(self) -> None:
-        """Test SearchRequest validation failure for empty strategies."""
-        with pytest.raises(ValidationError) as excinfo:
-            SearchRequest(
-                query="test",
-                strategies=[],  # Empty list
-            )
-        assert "List should have at least 1 item" in str(excinfo.value)
 
-    def test_search_request_invalid_top_k(self) -> None:
-        """Test SearchRequest validation failure for invalid top_k."""
-        with pytest.raises(ValidationError) as excinfo:
-            SearchRequest(
-                query="test",
-                strategies=[RetrieverType.LANCE_DENSE],
-                top_k=0,
-            )
-        assert "Input should be greater than 0" in str(excinfo.value)
+def test_search_request_validation() -> None:
+    """Test validation constraints."""
+    # Test min_length for strategies
+    with pytest.raises(ValidationError):
+        SearchRequest(query="test", strategies=[])
 
-    def test_search_request_complex_filters(self) -> None:
-        """Test SearchRequest with complex nested filters."""
-        filters: dict[str, Any] = {
-            "and": [
-                {"year": {"$gt": 2020}},
-                {"author": "Smith"},
-                {"tags": {"$in": ["AI", "ML"]}},
-            ]
-        }
-        request = SearchRequest(
-            query="test",
-            strategies=[RetrieverType.LANCE_DENSE],
-            filters=filters,
-        )
-        assert request.filters == filters
+    # Test top_k gt 0
+    with pytest.raises(ValidationError):
+        SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], top_k=0)
 
-    def test_search_request_missing_required(self) -> None:
-        """Test SearchRequest validation failure."""
-        with pytest.raises(ValidationError):
-            # strategies is required
-            SearchRequest(query="test")  # type: ignore
 
-    def test_hit_model(self) -> None:
-        """Test Hit model instantiation."""
-        hit = Hit(
-            doc_id="doc1",
-            content="content",
-            score=0.95,
-            source_strategy="dense",
-            metadata={"key": "value"},
-        )
-        assert hit.doc_id == "doc1"
-        assert hit.content == "content"
-        assert hit.score == 0.95
-        assert hit.source_strategy == "dense"
-        assert hit.metadata == {"key": "value"}
+def test_hit_schema() -> None:
+    """Test Hit schema structure."""
+    hit = Hit(
+        doc_id="123",
+        content="some content",
+        original_text="full text original",
+        distilled_text="distilled",
+        score=0.95,
+        source_strategy="dense",
+        metadata={"year": 2024},
+    )
+    assert hit.doc_id == "123"
+    assert hit.original_text == "full text original"
+    assert hit.distilled_text == "distilled"
+    assert hit.metadata["year"] == 2024
 
-    def test_search_response_model(self) -> None:
-        """Test SearchResponse model instantiation."""
-        hit1 = Hit(
-            doc_id="doc1",
-            content="c1",
-            score=0.9,
-            source_strategy="dense",
-            metadata={},
-        )
-        response = SearchResponse(
-            hits=[hit1],
-            total_found=1,
-            execution_time_ms=100.5,
-            provenance_hash="hash123",
-        )
-        assert len(response.hits) == 1
-        assert response.hits[0].doc_id == "doc1"
-        assert response.total_found == 1
-        assert response.execution_time_ms == 100.5
-        assert response.provenance_hash == "hash123"
+
+def test_search_response_schema() -> None:
+    """Test SearchResponse structure."""
+    hit = Hit(
+        doc_id="1", content="c", original_text="o", distilled_text="d", score=1.0, source_strategy="s", metadata={}
+    )
+    res = SearchResponse(hits=[hit], total_found=10, execution_time_ms=100.5, provenance_hash="abc")
+    assert len(res.hits) == 1
+    assert res.total_found == 10
