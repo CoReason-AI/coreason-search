@@ -8,7 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from coreason_search.interfaces import BaseScout
 from coreason_search.schemas import Hit
@@ -31,7 +31,8 @@ class MockScout(BaseScout):
             # or just copying it if it's short.
             # This simulates the "removal of fluff".
             original_len = len(hit.original_text)
-            keep_len = max(1, original_len // 2)
+            # If empty, slicing gives empty
+            keep_len = max(1, original_len // 2) if original_len > 0 else 0
 
             # Important: In a real implementation, we'd update distilled_text.
             # We must return a new Hit or modify the existing one.
@@ -44,7 +45,28 @@ class MockScout(BaseScout):
             # We'll just modify the current hit instance for now or create a copy if we want to be functional.
             # Given Pydantic, copy() (v1) or model_copy() (v2) is good.
             new_hit = hit.model_copy()
-            new_hit.distilled_text = hit.original_text[:keep_len] + "..."
+            if original_len == 0:
+                 new_hit.distilled_text = "..."
+            else:
+                 new_hit.distilled_text = hit.original_text[:keep_len] + "..."
+
             distilled_hits.append(new_hit)
 
         return distilled_hits
+
+
+_scout_instance: Optional[BaseScout] = None
+
+
+def get_scout() -> BaseScout:
+    """Singleton factory for Scout."""
+    global _scout_instance
+    if _scout_instance is None:
+        _scout_instance = MockScout()
+    return _scout_instance
+
+
+def reset_scout() -> None:
+    """Reset singleton."""
+    global _scout_instance
+    _scout_instance = None

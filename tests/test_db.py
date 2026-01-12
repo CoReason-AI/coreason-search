@@ -128,11 +128,6 @@ class TestLanceDBManager:
         # Wrong dimension: 1023 instead of 1024
         vector = np.random.rand(1023).astype(np.float32)
 
-        # Pydantic validation might fail before LanceDB if using DocumentSchema constructor
-        # But wait, DocumentSchema uses Vector(1024) which is a Pydantic type.
-        # So creating the object should fail validation?
-        # Let's see. If Vector is a strict type, it might.
-
         with pytest.raises(ValueError):
             DocumentSchema(
                 doc_id="3",
@@ -193,6 +188,28 @@ class TestLanceDBManager:
         results = table.search(vector).limit(1).to_pydantic(DocumentSchema)
         assert results[0].content == ""
         assert results[0].metadata == ""
+
+    def test_invalid_json_metadata(self, tmp_path: Path) -> None:
+        """Test that invalid JSON in metadata raises ValueError."""
+        vector = np.random.rand(1024).astype(np.float32)
+        with pytest.raises(ValueError, match="Metadata must be a valid JSON string"):
+            DocumentSchema(
+                doc_id="invalid",
+                vector=vector,
+                content="Invalid metadata",
+                metadata="{invalid_json}",
+            )
+
+    def test_whitespace_metadata(self, tmp_path: Path) -> None:
+        """Test that whitespace-only metadata is allowed and treated as empty."""
+        vector = np.random.rand(1024).astype(np.float32)
+        doc = DocumentSchema(
+            doc_id="whitespace",
+            vector=vector,
+            content="Whitespace metadata",
+            metadata="   ",
+        )
+        assert doc.metadata == "   "
 
     def test_path_with_spaces(self, tmp_path: Path) -> None:
         """Test using a path with spaces and special characters."""
