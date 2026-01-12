@@ -8,7 +8,6 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import List
 
 from coreason_search.fusion import FusionEngine
 from coreason_search.schemas import Hit
@@ -22,7 +21,7 @@ def create_hit(doc_id: str, score: float = 1.0) -> Hit:
         distilled_text="",
         score=score,
         source_strategy="test",
-        metadata={}
+        metadata={},
     )
 
 
@@ -90,5 +89,5 @@ class TestFusionEngine:
         fusion = FusionEngine()
         results = fusion.fuse([list_a])
 
-        assert results[0] is not h1 # Should be a copy
+        assert results[0] is not h1  # Should be a copy
         assert results[0].doc_id == h1.doc_id

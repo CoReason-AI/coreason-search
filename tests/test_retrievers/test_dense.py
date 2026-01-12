@@ -11,12 +11,11 @@
 import json
 from typing import Generator
 
-import numpy as np
 import pytest
 from lancedb.table import Table
 
 from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
-from coreason_search.embedder import MockEmbedder, get_embedder, reset_embedder
+from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.retrievers.dense import DenseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 
@@ -70,11 +69,7 @@ class TestDenseRetriever:
         self._seed_db()
         retriever = DenseRetriever()
 
-        request = SearchRequest(
-            query="science",
-            strategies=[RetrieverType.LANCE_DENSE],
-            top_k=3
-        )
+        request = SearchRequest(query="science", strategies=[RetrieverType.LANCE_DENSE], top_k=3)
 
         hits = retriever.retrieve(request)
 
@@ -91,11 +86,7 @@ class TestDenseRetriever:
         self._seed_db()
         retriever = DenseRetriever()
 
-        request = SearchRequest(
-            query={"text": "science"},
-            strategies=[RetrieverType.LANCE_DENSE],
-            top_k=1
-        )
+        request = SearchRequest(query={"text": "science"}, strategies=[RetrieverType.LANCE_DENSE], top_k=1)
 
         hits = retriever.retrieve(request)
         assert len(hits) == 1
@@ -106,9 +97,7 @@ class TestDenseRetriever:
         retriever = DenseRetriever()
 
         request = SearchRequest(
-            query={"keyword": "science", "year": "2024"},
-            strategies=[RetrieverType.LANCE_DENSE],
-            top_k=1
+            query={"keyword": "science", "year": "2024"}, strategies=[RetrieverType.LANCE_DENSE], top_k=1
         )
 
         hits = retriever.retrieve(request)
@@ -135,14 +124,9 @@ class TestDenseRetriever:
         vector = embedder.embed("test")[0]
         # Insert doc with complex metadata
         meta = {"key": "value", "list": [1, 2]}
-        table.add([
-            DocumentSchema(
-                doc_id="meta_test",
-                vector=vector,
-                content="test content",
-                metadata=json.dumps(meta)
-            )
-        ])
+        table.add(
+            [DocumentSchema(doc_id="meta_test", vector=vector, content="test content", metadata=json.dumps(meta))]
+        )
 
         retriever = DenseRetriever()
         request = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE])
@@ -153,30 +137,15 @@ class TestDenseRetriever:
 
     def test_retrieve_broken_metadata(self) -> None:
         """Test handling of broken JSON in metadata (if it somehow got in)."""
-        manager = get_db_manager()
-        table = manager.get_table()
-        # Force insert bypass pydantic validation?
-        # Or use a raw insertion if possible?
-        # LanceDB python adds via pydantic usually.
-        # But we can verify `retrieve` robustness by mocking the table return?
-        # Or just trust our validation in `db.py` prevents this.
-        # But if we want to be defensive:
-
-        # We'll just skip this if `db.py` enforces it.
-        # Wait, `db.py` has a validator `validate_metadata_json`.
-        # So we can't easily insert bad data via `DocumentSchema`.
-        # We can try to mock the `table.search()...to_list()` return value.
+        # We skip checking this via insertion because `db.py` enforces it.
+        # This test placeholder documents that we rely on db.py validation.
         pass
 
     def test_retrieve_limit(self) -> None:
         """Test that top_k is respected."""
-        self._seed_db() # 5 docs
+        self._seed_db()  # 5 docs
         retriever = DenseRetriever()
 
-        request = SearchRequest(
-            query="test",
-            strategies=[RetrieverType.LANCE_DENSE],
-            top_k=2
-        )
+        request = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], top_k=2)
         hits = retriever.retrieve(request)
         assert len(hits) == 2

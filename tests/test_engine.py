@@ -12,7 +12,6 @@ import json
 from typing import Generator, Iterator
 
 import pytest
-import numpy as np
 
 from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
@@ -69,7 +68,7 @@ class TestSearchEngine:
             top_k=5,
             fusion_enabled=True,
             rerank_enabled=True,
-            distill_enabled=True
+            distill_enabled=True,
         )
 
         response = engine.execute(request)
@@ -104,8 +103,8 @@ class TestSearchEngine:
         # Mixed valid and invalid
         request = SearchRequest(
             query="apple",
-            strategies=[RetrieverType.GRAPH_NEIGHBOR, RetrieverType.LANCE_DENSE], # Graph not impl
-            top_k=5
+            strategies=[RetrieverType.GRAPH_NEIGHBOR, RetrieverType.LANCE_DENSE],  # Graph not impl
+            top_k=5,
         )
 
         response = engine.execute(request)
@@ -113,11 +112,7 @@ class TestSearchEngine:
         assert len(response.hits) >= 1
 
         # Only invalid
-        request_bad = SearchRequest(
-            query="apple",
-            strategies=[RetrieverType.GRAPH_NEIGHBOR],
-            top_k=5
-        )
+        request_bad = SearchRequest(query="apple", strategies=[RetrieverType.GRAPH_NEIGHBOR], top_k=5)
         response_bad = engine.execute(request_bad)
         assert len(response_bad.hits) == 0
 
@@ -130,7 +125,7 @@ class TestSearchEngine:
             query="apple",
             strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],
             top_k=5,
-            fusion_enabled=False
+            fusion_enabled=False,
         )
 
         response = engine.execute(request)
@@ -142,10 +137,7 @@ class TestSearchEngine:
         engine = SearchEngine()
 
         request = SearchRequest(
-            query="apple",
-            strategies=[RetrieverType.LANCE_DENSE],
-            rerank_enabled=False,
-            distill_enabled=False
+            query="apple", strategies=[RetrieverType.LANCE_DENSE], rerank_enabled=False, distill_enabled=False
         )
 
         response = engine.execute(request)
@@ -172,15 +164,15 @@ class TestSearchEngine:
 
         # Mock dense retriever to raise exception
         class BrokenRetriever:
-            def retrieve(self, request):
+            def retrieve(self, request: SearchRequest) -> list:  # type: ignore[type-arg]
                 raise ValueError("Broken")
 
-        engine.dense_retriever = BrokenRetriever() # type: ignore
+        engine.dense_retriever = BrokenRetriever()  # type: ignore
 
         request = SearchRequest(
             query="apple",
-            strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS], # One broken, one works
-            top_k=5
+            strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],  # One broken, one works
+            top_k=5,
         )
 
         # Should NOT raise exception, but log error and continue with FTS

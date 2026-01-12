@@ -8,8 +8,8 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-import time
 import hashlib
+import time
 from typing import Iterator, List
 
 from coreason_search.fusion import FusionEngine
@@ -101,7 +101,7 @@ class SearchEngine:
         if request.rerank_enabled and rerank_candidates:
             reranked_hits = self.reranker.rerank(request.query, rerank_candidates, top_k=request.top_k)
         else:
-            reranked_hits = fused_hits[:request.top_k]
+            reranked_hits = fused_hits[: request.top_k]
 
         # 4. Scout (Distillation)
         if request.distill_enabled and reranked_hits:
@@ -118,11 +118,11 @@ class SearchEngine:
 
         return SearchResponse(
             hits=final_hits,
-            total_found=len(final_hits), # Or total from DB? "Total Found" usually means total matches.
+            total_found=len(final_hits),  # Or total from DB? "Total Found" usually means total matches.
             # But retrieval truncates. We don't have total count unless we ask DB for count.
             # For now, total returned.
             execution_time_ms=execution_time,
-            provenance_hash=provenance_hash
+            provenance_hash=provenance_hash,
         )
 
     def execute_systematic(self, request: SearchRequest) -> Iterator[Hit]:
@@ -155,7 +155,7 @@ class SearchEngine:
                 # If we need dense generator, we need to implement `retrieve_systematic` in Dense too.
                 # For now, assuming Sparse is the main one.
                 # Or just yield from the list.
-                hits = self.dense_retriever.retrieve(request) # This is top_k limited!
+                hits = self.dense_retriever.retrieve(request)  # This is top_k limited!
                 # Systematic needs ALL.
                 # Dense search for ALL is expensive/weird (nearest neighbors of everything?).
                 # Usually systematic implies boolean.

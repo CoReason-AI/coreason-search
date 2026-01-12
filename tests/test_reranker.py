@@ -35,13 +35,23 @@ class TestReranker:
 
         # Hit 1: Short content
         h1 = Hit(
-            doc_id="1", content="short", original_text="short", distilled_text="",
-            score=0.9, source_strategy="test", metadata={}
+            doc_id="1",
+            content="short",
+            original_text="short",
+            distilled_text="",
+            score=0.9,
+            source_strategy="test",
+            metadata={},
         )
         # Hit 2: Long content
         h2 = Hit(
-            doc_id="2", content="very long content indeed", original_text="very long content indeed", distilled_text="",
-            score=0.8, source_strategy="test", metadata={}
+            doc_id="2",
+            content="very long content indeed",
+            original_text="very long content indeed",
+            distilled_text="",
+            score=0.8,
+            source_strategy="test",
+            metadata={},
         )
 
         # Input: [h1, h2] (h1 higher score initially)
@@ -59,7 +69,15 @@ class TestReranker:
         """Test that reranker respects top_k."""
         reranker = get_reranker()
         hits = [
-            Hit(doc_id=str(i), content="a"*i, original_text="", distilled_text="", score=0, source_strategy="", metadata={})
+            Hit(
+                doc_id=str(i),
+                content="a" * i,
+                original_text="",
+                distilled_text="",
+                score=0,
+                source_strategy="",
+                metadata={},
+            )
             for i in range(1, 6)
         ]
         # Lengths: 1, 2, 3, 4, 5. Order after rerank should be 5, 4, 3, 2, 1

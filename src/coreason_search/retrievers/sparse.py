@@ -9,9 +9,9 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from typing import Generator, Iterator, List, Union
+from typing import Any, Dict, Iterator, List, Union
 
-from coreason_search.db import DocumentSchema, get_db_manager
+from coreason_search.db import get_db_manager
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 
@@ -57,11 +57,7 @@ class SparseRetriever(BaseRetriever):
         # So we implement standard top_k here.
 
         try:
-            results_list = (
-                self.table.search(query_str, query_type="fts")
-                .limit(request.top_k)
-                .to_list()
-            )
+            results_list = self.table.search(query_str, query_type="fts").limit(request.top_k).to_list()
         except Exception:
             # Fallback if FTS index missing or other error?
             # For now, let's propagate or return empty to adhere to fail-fast/explicit error?
@@ -115,17 +111,21 @@ class SparseRetriever(BaseRetriever):
         # We need streaming.
         # If `lancedb` doesn't stream FTS, we might be stuck.
         # But let's assume for this "Atomic Unit" on a local environment, `to_list()` or `to_arrow()` is acceptable
-        # OR we implement a loop with limits if we want to be fancy, but FTS usually doesn't support deep paging efficiently.
+        # OR we implement a loop with limits if we want to be fancy,
+        # but FTS usually doesn't support deep paging efficiently.
         # Wait, the prompt says "Implement a Python Generator... Stream them".
-        # I will implement a generator that fetches in batches if possible, or just fetches all and yields if the library limits me,
+        # I will implement a generator that fetches in batches if possible,
+        # or just fetches all and yields if the library limits me,
         # BUT I should try to be efficient.
 
-        # Given the constraints and library version (0.26.1), `to_arrow()` is the most efficient way to get data without full python object overhead.
+        # Given the constraints and library version (0.26.1),
+        # `to_arrow()` is the most efficient way to get data without full python object overhead.
         # Then we iterate the arrow table.
-        # If `limit` is needed, we set it to strict "ALL" (e.g. 2^63-1 or just don't set it if defaults allow? defaults 10).
+        # If `limit` is needed, we set it to strict "ALL"
+        # (e.g. 2^63-1 or just don't set it if defaults allow? defaults 10).
         # We must set a large limit.
 
-        query_builder = self.table.search(query_str, query_type="fts").limit(1000000) # Arbitrary large number
+        query_builder = self.table.search(query_str, query_type="fts").limit(1000000)  # Arbitrary large number
 
         # Use to_arrow() to get a Table, then to_batches()
         arrow_table = query_builder.to_arrow()
@@ -138,7 +138,7 @@ class SparseRetriever(BaseRetriever):
             for item in batch.to_pylist():
                 yield self._map_single_result(item)
 
-    def _prepare_query(self, query: Union[str, dict]) -> str:
+    def _prepare_query(self, query: Union[str, Dict[str, Any]]) -> str:
         """Helper to prepare query string."""
         if isinstance(query, dict):
             # If it's a dict, we might need to convert to Tantivy syntax.
@@ -151,11 +151,11 @@ class SparseRetriever(BaseRetriever):
             return " AND ".join(parts)
         return str(query)
 
-    def _map_results(self, results_list: List[dict]) -> List[Hit]:
+    def _map_results(self, results_list: List[Dict[str, Any]]) -> List[Hit]:
         """Map generic list of dicts to Hits."""
         return [self._map_single_result(item) for item in results_list]
 
-    def _map_single_result(self, item: dict) -> Hit:
+    def _map_single_result(self, item: Dict[str, Any]) -> Hit:
         """Map a single dict to a Hit."""
         doc_id = item["doc_id"]
         content = item["content"]

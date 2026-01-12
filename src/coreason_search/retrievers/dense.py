@@ -9,9 +9,9 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from typing import List, Union
+from typing import List
 
-from coreason_search.db import DocumentSchema, get_db_manager
+from coreason_search.db import get_db_manager
 from coreason_search.embedder import get_embedder
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
@@ -77,11 +77,7 @@ class DenseRetriever(BaseRetriever):
         # We need to handle limit/top_k from request
         # We use `to_list()` to get `_distance` which is not available in `to_pydantic`
         # unless mapped explicitly.
-        results_list = (
-            self.table.search(query_vector)
-            .limit(request.top_k)
-            .to_list()
-        )
+        results_list = self.table.search(query_vector).limit(request.top_k).to_list()
 
         hits = []
         for item in results_list:
@@ -109,8 +105,8 @@ class DenseRetriever(BaseRetriever):
                 Hit(
                     doc_id=doc_id,
                     content=content,
-                    original_text=content, # Assuming content is full text? PRD: "original_text (raw content)"
-                    distilled_text="", # Populated by Scout later
+                    original_text=content,  # Assuming content is full text? PRD: "original_text (raw content)"
+                    distilled_text="",  # Populated by Scout later
                     score=score,
                     source_strategy=RetrieverType.LANCE_DENSE.value,
                     metadata=metadata,

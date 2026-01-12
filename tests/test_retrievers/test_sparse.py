@@ -12,12 +12,11 @@ import json
 from typing import Generator, Iterator
 
 import pytest
-import numpy as np
 
 from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.retrievers.sparse import SparseRetriever
-from coreason_search.schemas import Hit, RetrieverType, SearchRequest
+from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestSparseRetriever:
@@ -68,11 +67,7 @@ class TestSparseRetriever:
         self._seed_db()
         retriever = SparseRetriever()
 
-        request = SearchRequest(
-            query="Apple",
-            strategies=[RetrieverType.LANCE_FTS],
-            top_k=5
-        )
+        request = SearchRequest(query="Apple", strategies=[RetrieverType.LANCE_FTS], top_k=5)
 
         hits = retriever.retrieve(request)
         assert len(hits) >= 1
@@ -150,7 +145,7 @@ class TestSparseRetriever:
         request = SearchRequest(query="a", strategies=[RetrieverType.LANCE_FTS])
 
         # Should raise an error because index is missing
-        with pytest.raises(Exception): # ValueError or similar from lancedb
+        with pytest.raises((ValueError, RuntimeError)):  # LanceDB raises ValueError or RuntimeError
             retriever.retrieve(request)
 
     def test_metadata_parsing(self) -> None:

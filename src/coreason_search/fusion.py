@@ -8,7 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from coreason_search.schemas import Hit
 

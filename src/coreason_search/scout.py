@@ -46,9 +46,9 @@ class MockScout(BaseScout):
             # Given Pydantic, copy() (v1) or model_copy() (v2) is good.
             new_hit = hit.model_copy()
             if original_len == 0:
-                 new_hit.distilled_text = "..."
+                new_hit.distilled_text = "..."
             else:
-                 new_hit.distilled_text = hit.original_text[:keep_len] + "..."
+                new_hit.distilled_text = hit.original_text[:keep_len] + "..."
 
             distilled_hits.append(new_hit)
 

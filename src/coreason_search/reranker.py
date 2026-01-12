@@ -19,9 +19,7 @@ class MockReranker(BaseReranker):
     Mock Re-Ranker that simulates Cross-Encoder behavior.
     """
 
-    def rerank(
-        self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int
-    ) -> List[Hit]:
+    def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
         """
         Mock re-ranking.
 
@@ -35,9 +33,6 @@ class MockReranker(BaseReranker):
         """
         if not hits:
             return []
-
-        # Convert query to string for simplicity if it's a dict
-        query_str = str(query) if not isinstance(query, str) else query
 
         # Simulate scoring based on some logic, or just reverse order to prove it does something?
         # Or random?
