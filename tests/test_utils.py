@@ -32,20 +32,22 @@ def test_logger_exports() -> None:
 
 def test_logger_directory_creation() -> None:
     """Test that the logger creates the directory if it doesn't exist."""
-    # We need to reload the module to trigger the top-level code again
-    # We mock Path to control the existence check
-    with patch("coreason_search.utils.logger.Path") as mock_path_cls:
+    # We patch pathlib.Path because the module uses 'from pathlib import Path'
+    # and we are reloading the module, which re-imports it.
+    with patch("pathlib.Path") as mock_path_cls:
         mock_path_instance = MagicMock()
         mock_path_cls.return_value = mock_path_instance
 
-        # First call to exists returns False (triggering mkdir), subsequent return whatever
-        mock_path_instance.exists.side_effect = [False, True, True]
+        # We need to handle the specific call Path("logs")
+
+        # First call to exists returns False (triggering mkdir), subsequent return True
+        mock_path_instance.exists.side_effect = [False, True, True, True]
 
         # Force reload to run the module-level code
         importlib.reload(logger_module)
 
         # Verify mkdir was called
-        mock_path_instance.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+        mock_path_instance.mkdir.assert_called_with(parents=True, exist_ok=True)
 
-    # Reload again to restore normal state for other tests (optional but good practice)
+    # Reload again to restore normal state for other tests
     importlib.reload(logger_module)
