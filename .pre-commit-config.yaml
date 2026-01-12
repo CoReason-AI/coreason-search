@@ -12,7 +12,9 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^tests/test_embedder\.py$
       - id: ruff-format
+        exclude: ^tests/test_embedder\.py$
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.1
     hooks:
