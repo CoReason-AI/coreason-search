@@ -11,7 +11,10 @@
 import sys
 from pathlib import Path
 
-from loguru import logger
+from loguru import logger as loguru_logger
+
+# Explicitly export logger for mypy
+logger = loguru_logger
 
 __all__ = ["logger"]
 
@@ -33,7 +36,7 @@ logger.add(
 # Ensure logs directory exists
 log_path = Path("logs")
 if not log_path.exists():
-    log_path.mkdir(parents=True, exist_ok=True)
+    log_path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
 
 # Sink 2: File (JSON, Rotation, Retention)
 logger.add(
@@ -44,3 +47,5 @@ logger.add(
     enqueue=True,
     level="INFO",
 )
+
+__all__ = ["logger"]
