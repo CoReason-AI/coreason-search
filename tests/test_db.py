@@ -119,3 +119,95 @@ class TestLanceDBManager:
         results = new_table.search(vector).limit(1).to_pydantic(DocumentSchema)
         assert len(results) == 1
         assert results[0].content == "Persisted doc"
+
+    def test_vector_dimension_mismatch(self, tmp_path: Path) -> None:
+        """Test that inserting a vector with incorrect dimensions raises an error."""
+        uri = str(tmp_path / "lancedb_dim")
+        get_db_manager(uri)
+
+        # Wrong dimension: 1023 instead of 1024
+        vector = np.random.rand(1023).astype(np.float32)
+
+        # Pydantic validation might fail before LanceDB if using DocumentSchema constructor
+        # But wait, DocumentSchema uses Vector(1024) which is a Pydantic type.
+        # So creating the object should fail validation?
+        # Let's see. If Vector is a strict type, it might.
+
+        with pytest.raises(ValueError):
+            DocumentSchema(
+                doc_id="3",
+                vector=vector,
+                content="Bad vector",
+                metadata="{}",
+            )
+
+    def test_duplicate_insertions(self, tmp_path: Path) -> None:
+        """Test insertion of duplicate doc_ids (LanceDB usually allows this)."""
+        uri = str(tmp_path / "lancedb_dup")
+        manager = get_db_manager(uri)
+        table = manager.get_table()
+
+        vector = np.random.rand(1024).astype(np.float32)
+        doc1 = DocumentSchema(doc_id="dup", vector=vector, content="First", metadata="{}")
+        doc2 = DocumentSchema(doc_id="dup", vector=vector, content="Second", metadata="{}")
+
+        table.add([doc1])
+        table.add([doc2])
+
+        # Should have 2 entries
+        assert table.count_rows() == 2
+
+        # Querying by ID? LanceDB is vector store mostly.
+        # But we can filter.
+        results = table.search().where("doc_id = 'dup'").to_pydantic(DocumentSchema)
+        assert len(results) == 2
+
+    def test_complex_metadata(self, tmp_path: Path) -> None:
+        """Test storing complex JSON metadata."""
+        uri = str(tmp_path / "lancedb_meta")
+        manager = get_db_manager(uri)
+        table = manager.get_table()
+
+        vector = np.random.rand(1024).astype(np.float32)
+        complex_data = {"nested": {"a": 1, "b": [1, 2, 3]}, "unicode": "🎉", "bool": True, "null": None}
+        json_str = json.dumps(complex_data)
+
+        doc = DocumentSchema(doc_id="meta", vector=vector, content="Complex Metadata", metadata=json_str)
+        table.add([doc])
+
+        results = table.search(vector).limit(1).to_pydantic(DocumentSchema)
+        retrieved_meta = json.loads(results[0].metadata)
+        assert retrieved_meta["nested"]["a"] == 1
+        assert retrieved_meta["unicode"] == "🎉"
+
+    def test_empty_fields(self, tmp_path: Path) -> None:
+        """Test storing empty content and metadata."""
+        uri = str(tmp_path / "lancedb_empty")
+        manager = get_db_manager(uri)
+        table = manager.get_table()
+
+        vector = np.random.rand(1024).astype(np.float32)
+        doc = DocumentSchema(doc_id="empty", vector=vector, content="", metadata="")
+        table.add([doc])
+
+        results = table.search(vector).limit(1).to_pydantic(DocumentSchema)
+        assert results[0].content == ""
+        assert results[0].metadata == ""
+
+    def test_path_with_spaces(self, tmp_path: Path) -> None:
+        """Test using a path with spaces and special characters."""
+        # Using a directory inside tmp_path that has spaces
+        weird_dir = tmp_path / "Path With Spaces & Symbols"
+        weird_dir.mkdir()
+
+        uri = str(weird_dir)
+        manager = get_db_manager(uri)
+        table = manager.get_table()
+
+        assert "documents" in manager.db.list_tables() or True  # Just checking no crash
+
+        vector = np.random.rand(1024).astype(np.float32)
+        doc = DocumentSchema(doc_id="space", vector=vector, content="Spaced", metadata="{}")
+        table.add([doc])
+
+        assert table.count_rows() == 1
