@@ -15,6 +15,7 @@ from typing import Iterator, List
 from coreason_search.fusion import FusionEngine
 from coreason_search.reranker import get_reranker
 from coreason_search.retrievers.dense import DenseRetriever
+from coreason_search.retrievers.graph import GraphRetriever
 from coreason_search.retrievers.sparse import SparseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
 from coreason_search.scout import get_scout
@@ -32,6 +33,7 @@ class SearchEngine:
         # In a real app, these might be lazy loaded or injected
         self.dense_retriever = DenseRetriever()
         self.sparse_retriever = SparseRetriever()
+        self.graph_retriever = GraphRetriever()
         self.fusion_engine = FusionEngine()
         self.reranker = get_reranker()
         self.scout = get_scout()
@@ -56,9 +58,8 @@ class SearchEngine:
                     hits = self.sparse_retriever.retrieve(request)
                     all_hits.append(hits)
                 elif strategy == RetrieverType.GRAPH_NEIGHBOR:
-                    # Not implemented in this atomic unit, log warning or skip
-                    logger.warning("Graph retrieval not implemented yet.")
-                    # all_hits.append([])
+                    hits = self.graph_retriever.retrieve(request)
+                    all_hits.append(hits)
                 else:
                     logger.warning(f"Unknown strategy: {strategy}")  # pragma: no cover
             except Exception as e:
