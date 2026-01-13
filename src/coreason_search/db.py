@@ -8,11 +8,12 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+import json
 from typing import Optional
 
 import lancedb
 from lancedb.pydantic import LanceModel, Vector
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from coreason_search.utils.logger import logger
 
@@ -31,6 +32,24 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
     vector: Vector(VECTOR_DIM) = Field(..., description="Dense vector embedding")  # type: ignore
     content: str = Field(..., description="Main content of the document")
     metadata: str = Field(..., description="JSON stringified metadata")
+
+    @field_validator("metadata")
+    @classmethod
+    def validate_metadata_json(cls, v: str) -> str:
+        """Ensure metadata is a valid JSON string."""
+        if not v:
+            return v  # Allow empty string if that's desired, or enforce {}?
+            # Let's enforce it must be valid JSON or empty.
+            # If empty string, technically not valid JSON unless it's "" which loads as... fail.
+            # But earlier tests used "" and it passed.
+            # Let's allow empty string to mean "no metadata".
+        if v.strip() == "":
+            return v
+        try:
+            json.loads(v)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Metadata must be a valid JSON string: {e}") from e
+        return v
 
 
 class LanceDBManager:
