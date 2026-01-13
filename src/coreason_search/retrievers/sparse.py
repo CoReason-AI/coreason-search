@@ -14,6 +14,7 @@ from typing import Any, Dict, Iterator, List, Union
 from coreason_search.db import get_db_manager
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
+from coreason_search.utils.filters import matches_filters
 
 
 class SparseRetriever(BaseRetriever):
@@ -57,7 +58,12 @@ class SparseRetriever(BaseRetriever):
         # So we implement standard top_k here.
 
         try:
-            results_list = self.table.search(query_str, query_type="fts").limit(request.top_k).to_list()
+            # Apply oversampling for post-filtering
+            limit = request.top_k
+            if request.filters:
+                limit = max(limit * 10, 100)
+
+            results_list = self.table.search(query_str, query_type="fts").limit(limit).to_list()
         except Exception:
             # Fallback if FTS index missing or other error?
             # For now, let's propagate or return empty to adhere to fail-fast/explicit error?
@@ -67,7 +73,11 @@ class SparseRetriever(BaseRetriever):
             # We should probably let it raise so the user knows configuration is wrong.
             raise
 
-        return self._map_results(results_list)
+        hits = self._map_results(results_list)
+        if request.filters:
+            hits = [h for h in hits if matches_filters(h.metadata, request.filters)]
+
+        return hits[: request.top_k]
 
     def retrieve_systematic(self, request: SearchRequest) -> Iterator[Hit]:
         """
@@ -136,7 +146,12 @@ class SparseRetriever(BaseRetriever):
             # Convert to pydantic or dicts
             # batch.to_pylist() returns list of dicts
             for item in batch.to_pylist():
-                yield self._map_single_result(item)
+                hit = self._map_single_result(item)
+                if request.filters:
+                    if matches_filters(hit.metadata, request.filters):
+                        yield hit
+                else:
+                    yield hit
 
     def _prepare_query(self, query: Union[str, Dict[str, Any]]) -> str:
         """Helper to prepare query string."""

@@ -15,6 +15,7 @@ from coreason_search.db import get_db_manager
 from coreason_search.embedder import get_embedder
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
+from coreason_search.utils.filters import matches_filters
 
 
 class DenseRetriever(BaseRetriever):
@@ -75,9 +76,16 @@ class DenseRetriever(BaseRetriever):
         # Execute Search
         # LanceDB search returns a LanceQueryBuilder
         # We need to handle limit/top_k from request
+
+        # Apply oversampling for post-filtering
+        limit = request.top_k
+        if request.filters:
+            # Heuristic: fetch 10x or at least 100 more to allow for filtering
+            limit = max(limit * 10, 100)
+
         # We use `to_list()` to get `_distance` which is not available in `to_pydantic`
         # unless mapped explicitly.
-        results_list = self.table.search(query_vector).limit(request.top_k).to_list()
+        results_list = self.table.search(query_vector).limit(limit).to_list()
 
         hits = []
         for item in results_list:
@@ -86,20 +94,20 @@ class DenseRetriever(BaseRetriever):
             content = item["content"]
             metadata_str = item["metadata"]
 
-            # _distance is returned by LanceDB for vector search
-            distance = item.get("_distance", 0.0)
-            # Convert distance to similarity score (assuming cosine distance 0..2?)
-            # Usually sim = 1 - distance/2 or similar.
-            # Or just 1 / (1 + distance) for RRF compatibility?
-            # PRD mentions RRF uses rank.
-            # But Hit object has `score`.
-            # Let's use 1 - distance for now (assuming normalized vectors).
-            score = 1.0 - distance
-
             try:
                 metadata = json.loads(metadata_str) if metadata_str else {}
             except json.JSONDecodeError:  # pragma: no cover
                 metadata = {}
+
+            # Apply Metadata Filters (Python-side)
+            if request.filters and not matches_filters(metadata, request.filters):
+                continue
+
+            # _distance is returned by LanceDB for vector search
+            distance = item.get("_distance", 0.0)
+            # Convert distance to similarity score (assuming cosine distance 0..2?)
+            # Usually sim = 1 - distance/2 or similar.
+            score = 1.0 - distance
 
             hits.append(
                 Hit(
@@ -113,4 +121,5 @@ class DenseRetriever(BaseRetriever):
                 )
             )
 
-        return hits
+        # Return only top_k after filtering
+        return hits[: request.top_k]
