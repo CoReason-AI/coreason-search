@@ -192,3 +192,42 @@ class TestSparseRetriever:
         request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "cars"})
         results = list(retriever.retrieve_systematic(request))
         assert len(results) == 0
+
+    def test_retrieve_complex_filters(self) -> None:
+        """Test sparse retrieval with complex logical filters ($or)."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # Doc 1 -> fruit, Doc 2 -> fruit, Doc 3 -> vegetable
+        # Filter: fruit OR vegetable
+        # We query for "is" which is in "Apple is a fruit", "Banana is also...", "Carrot is..."
+        # If "is" is a stopword, maybe query "fruit" or "vegetable" in text?
+        # But text query matches hits first.
+        # Let's use "*" or something broad? LanceDB FTS might not support *.
+        # Use "fruit" -> matches Doc 1, 2.
+        # Use "vegetable" -> matches Doc 3.
+        # If we query "fruit", we get Doc 1, 2. Filter: fruit OR vegetable.
+        # Doc 3 (vegetable) is NOT retrieved by FTS query "fruit".
+        # So filter logic only applies to retrieved items.
+        # Query "fruit OR vegetable" in FTS?
+        # Let's query "a" (in "Apple is a fruit", "Banana is also a fruit", "Carrot is a vegetable").
+        # "a" might be stopword.
+        # Let's query "fruit" and check filter.
+
+        # Query: "fruit" (matches 1, 2)
+        # Filter: category=fruit OR category=vegetable
+        # Matches 1, 2.
+        # Doc 3 is not retrieved, so filter doesn't matter for it.
+
+        request = SearchRequest(
+            query="fruit",
+            strategies=[RetrieverType.LANCE_FTS],
+            filters={"$or": [{"category": "fruit"}, {"category": "vegetable"}]},
+        )
+        hits = retriever.retrieve(request)
+        assert len(hits) == 2
+
+        # Filter: category=vegetable (should exclude 1, 2)
+        request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "vegetable"})
+        hits = retriever.retrieve(request)
+        assert len(hits) == 0

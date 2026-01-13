@@ -14,67 +14,105 @@ from typing import Any, Dict
 def matches_filters(metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
     """
     Check if the metadata matches the MongoDB-style filters.
+    Supports dot notation for nested fields and logical operators ($or, $and, $not).
 
     Args:
         metadata: The document metadata dictionary.
-        filters: The filter dictionary (e.g. {"year": {"$gt": 2020}, "category": "paper"}).
+        filters: The filter dictionary.
 
     Returns:
         bool: True if it matches all filters, False otherwise.
     """
+    # 1. Handle Logical Operators ($or, $and, $not)
+    if "$or" in filters:
+        conditions = filters["$or"]
+        if isinstance(conditions, list):
+            if not any(matches_filters(metadata, cond) for cond in conditions):
+                return False
+        else:
+            return False
+
+    if "$and" in filters:
+        conditions = filters["$and"]
+        if isinstance(conditions, list):
+            if not all(matches_filters(metadata, cond) for cond in conditions):
+                return False
+        else:
+            return False
+
+    if "$not" in filters:
+        condition = filters["$not"]
+        if matches_filters(metadata, condition):
+            return False
+
+    # 2. Handle Field Constraints
     for key, condition in filters.items():
-        # Get the value from metadata, default to None if missing
-        value = metadata.get(key)
+        if key.startswith("$"):
+            continue
+
+        value = _get_value_by_path(metadata, key)
 
         if isinstance(condition, dict):
-            # Handle operators
             if not _check_condition_operators(value, condition):
                 return False
         else:
-            # Direct equality
-            if value != condition:
-                return False
+            # Direct equality with implicit list match
+            if isinstance(value, list) and not isinstance(condition, list):
+                if condition not in value:
+                    return False
+            else:
+                if value != condition:
+                    return False
 
     return True
 
 
-def _check_condition_operators(value: Any, condition: Dict[str, Any]) -> bool:
-    """Helper to check operators for a single field."""
-    for op, target in condition.items():
-        if op == "$eq":
-            if value != target:
-                return False
-        elif op == "$ne":
-            if value == target:
-                return False
-        elif op == "$gt":
-            if value is None or not (value > target):
-                return False
-        elif op == "$gte":
-            if value is None or not (value >= target):
-                return False
-        elif op == "$lt":
-            if value is None or not (value < target):
-                return False
-        elif op == "$lte":
-            if value is None or not (value <= target):
-                return False
-        elif op == "$in":
-            if not isinstance(target, list):
-                # Should be a list, if not, maybe treat as single value?
-                # But strict MongoDB implies list.
-                if value != target:
-                    return False
-            else:
-                if value not in target:
-                    return False
-        elif op == "$nin":
-            if isinstance(target, list) and value in target:
-                return False
+def _get_value_by_path(data: Any, path: str) -> Any:
+    """Retrieve value from nested dict using dot notation."""
+    keys = path.split(".")
+    curr = data
+    for k in keys:
+        if isinstance(curr, dict):
+            curr = curr.get(k)
         else:
-            # Unknown operator, assume direct match if it's not starting with $?
-            # Or fail? Let's ignore or treat as False to be safe.
-            # But nested structure in filters usually implies operators.
-            pass
+            return None
+    return curr
 
+
+def _check_condition_operators(value: Any, condition: Dict[str, Any]) -> bool:
+    """Helper to check operators for a single field with type safety."""
+    for op, target in condition.items():
+        if not check_single_op(op, value, target):
+            return False
+    return True
+
+
+def check_single_op(op: str, value: Any, target: Any) -> bool:
+    """Check a single operator condition."""
+    try:
+        if op == "$eq":
+            return bool(value == target)
+        if op == "$ne":
+            return bool(value != target)
+        if op == "$gt":
+            return value is not None and bool(value > target)
+        if op == "$gte":
+            return value is not None and bool(value >= target)
+        if op == "$lt":
+            return value is not None and bool(value < target)
+        if op == "$lte":
+            return value is not None and bool(value <= target)
+        if op == "$in":
+            if isinstance(target, (list, tuple)):
+                return bool(value in target)  # pragma: no cover
+            return bool(value == target)
+        if op == "$nin":
+            if isinstance(target, (list, tuple)):
+                return bool(value not in target)  # pragma: no cover
+            return bool(value != target)
+    except TypeError:
+        # Type mismatch (e.g. comparing str > int) returns False
+        return False  # pragma: no cover
+
+    # Unknown operator treated as True
     return True
