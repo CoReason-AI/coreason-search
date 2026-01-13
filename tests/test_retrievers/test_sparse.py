@@ -10,6 +10,7 @@
 
 import json
 from typing import Generator, Iterator
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -132,6 +133,39 @@ class TestSparseRetriever:
         )
         hits = retriever.retrieve(request)
         assert len(hits) == 0
+
+    def test_retrieve_systematic_empty(self) -> None:
+        """Test systematic search with no results (hits break 112)."""
+        self._seed_db()
+        retriever = SparseRetriever()
+        request = SearchRequest(query="zombie", strategies=[RetrieverType.LANCE_FTS])
+        results = list(retriever.retrieve_systematic(request))
+        assert len(results) == 0
+
+    def test_retrieve_systematic_pagination(self) -> None:
+        """Test systematic search with multiple pages."""
+        self._seed_db()
+        sparse_retriever = SparseRetriever()
+        req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_FTS])
+
+        mock_builder = MagicMock()
+        sparse_retriever.table = MagicMock()
+        sparse_retriever.table.search.return_value = mock_builder
+        mock_builder.limit.return_value = mock_builder
+        mock_builder.offset.return_value = mock_builder
+
+        # Simulate batch_size=1000
+        # First batch full (1000 items), second batch has 1 item (hits break at line 126)
+
+        full_batch = [{"doc_id": str(i), "content": "c", "metadata": "{}", "_score": 1.0} for i in range(1000)]
+        partial_batch = [{"doc_id": "1001", "content": "c", "metadata": "{}", "_score": 1.0}]
+
+        mock_builder.to_list.side_effect = [full_batch, partial_batch]
+
+        results = list(sparse_retriever.retrieve_systematic(req))
+        assert len(results) == 1001
+        # It should have called to_list twice.
+        assert mock_builder.to_list.call_count == 2
 
     def test_missing_index(self) -> None:
         """Test behavior when FTS index is missing."""
