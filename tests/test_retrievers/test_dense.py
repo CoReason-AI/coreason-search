@@ -149,3 +149,59 @@ class TestDenseRetriever:
         request = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], top_k=2)
         hits = retriever.retrieve(request)
         assert len(hits) == 2
+
+    def test_retrieve_with_filters(self) -> None:
+        """Test retrieval with metadata filters."""
+        self._seed_db()
+        retriever = DenseRetriever()
+
+        # Doc 0 -> index 0, ..., Doc 4 -> index 4
+        # Filter for index >= 3 (Docs 3, 4)
+        request = SearchRequest(
+            query="science",
+            strategies=[RetrieverType.LANCE_DENSE],
+            top_k=5,
+            filters={"index": {"$gte": 3}},
+        )
+
+        hits = retriever.retrieve(request)
+        assert len(hits) == 2
+        for h in hits:
+            assert h.metadata["index"] >= 3
+
+    def test_retrieve_with_filters_oversampling(self) -> None:
+        """Test that oversampling works (filter reduces count but we still find matches)."""
+        # Create enough docs so that top_k < count
+        manager = get_db_manager()
+        table = manager.get_table()
+        embedder = get_embedder()
+        docs = []
+        # 20 docs. index 0..19.
+        # We want to find index=19.
+        # If we query with top_k=5, and index=19 is far down in vector sim (random),
+        # without oversampling we might miss it if limit is strictly top_k.
+        # But with random vectors, it's probabilistic.
+        # To test deterministically, we'd need fixed vectors.
+        # But with oversampling (max(top_k*10, 100)), we fetch 100 docs.
+        # Since we only insert 20, we fetch ALL. So we will find it.
+        for i in range(20):
+            docs.append(
+                DocumentSchema(
+                    doc_id=f"over_{i}",
+                    vector=embedder.embed(f"doc_{i}")[0],
+                    content=f"doc {i}",
+                    metadata=json.dumps({"idx": i}),
+                )
+            )
+        table.add(docs)
+
+        retriever = DenseRetriever()
+        request = SearchRequest(
+            query="doc",
+            strategies=[RetrieverType.LANCE_DENSE],
+            top_k=1,
+            filters={"idx": 19},
+        )
+        hits = retriever.retrieve(request)
+        assert len(hits) == 1
+        assert hits[0].metadata["idx"] == 19

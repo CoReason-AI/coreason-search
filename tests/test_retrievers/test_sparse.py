@@ -156,3 +156,39 @@ class TestSparseRetriever:
         hits = retriever.retrieve(request)
         assert len(hits) == 1
         assert hits[0].metadata["category"] == "vegetable"
+
+    def test_retrieve_with_filters(self) -> None:
+        """Test sparse retrieval with metadata filters."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # Doc 1 -> fruit, Doc 2 -> fruit, Doc 3 -> vegetable
+        request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "fruit"})
+        hits = retriever.retrieve(request)
+        # Should match "fruit" in content (Docs 1, 2) and filter matches "fruit"
+        assert len(hits) == 2
+        for h in hits:
+            assert h.metadata["category"] == "fruit"
+
+        # Negative filter
+        request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "vegetable"})
+        hits = retriever.retrieve(request)
+        # Content matches (Docs 1, 2) but filter excludes them.
+        assert len(hits) == 0
+
+    def test_systematic_generator_filtered(self) -> None:
+        """Test systematic generator with filters."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "fruit"})
+        generator = retriever.retrieve_systematic(request)
+        results = list(generator)
+        assert len(results) == 2
+        for h in results:
+            assert h.metadata["category"] == "fruit"
+
+        # Filter out all
+        request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "cars"})
+        results = list(retriever.retrieve_systematic(request))
+        assert len(results) == 0
