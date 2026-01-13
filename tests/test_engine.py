@@ -100,21 +100,25 @@ class TestSearchEngine:
         self._seed_db()
         engine = SearchEngine()
 
-        # Mixed valid and invalid
+        # Mixed valid and invalid (Graph IS implemented now, but we can verify it doesn't crash)
+        # Let's use a query that Graph mock recognizes ("Protein X") to verify Graph works mixed with Dense.
         request = SearchRequest(
-            query="apple",
-            strategies=[RetrieverType.GRAPH_NEIGHBOR, RetrieverType.LANCE_DENSE],  # Graph not impl
+            query="Protein X",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR, RetrieverType.LANCE_DENSE],
             top_k=5,
         )
 
         response = engine.execute(request)
-        # Should succeed with Dense results
+        # Should succeed with Dense results AND Graph results
+        # "Protein X" might not be in the vector DB (seeded with apples), but Graph should return hits.
         assert len(response.hits) >= 1
+        sources = {h.source_strategy for h in response.hits}
+        assert "graph_neighbor" in sources
 
-        # Only invalid
-        request_bad = SearchRequest(query="apple", strategies=[RetrieverType.GRAPH_NEIGHBOR], top_k=5)
-        response_bad = engine.execute(request_bad)
-        assert len(response_bad.hits) == 0
+        # Test truly unknown strategy?
+        # Enum validation prevents passing strings not in Enum.
+        # But we can try to force it if we bypass validation or if we just want to test exception handling.
+        # The `execute` loop handles exceptions.
 
     def test_fusion_disabled(self) -> None:
         """Test execution with fusion disabled."""
