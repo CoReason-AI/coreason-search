@@ -26,14 +26,7 @@ class SparseRetriever(BaseRetriever):
     def __init__(self) -> None:
         self.db_manager = get_db_manager()
         self.table = self.db_manager.get_table()
-        # Ensure FTS index exists on content?
-        # Creating index is expensive and should be done at ingestion time usually.
-        # But for the retriever to work, it must exist.
-        # We can try to create it if it doesn't exist, or assume it exists.
-        # For atomic unit and testing, we might need to trigger it.
-        # However, `create_fts_index` might block.
-        # Let's assume ingestion handles it, but verify in tests.
-        pass
+        self.systematic_batch_size = 1000
 
     def retrieve(self, request: SearchRequest) -> List[Hit]:
         """
@@ -95,7 +88,7 @@ class SparseRetriever(BaseRetriever):
         query_str = self._prepare_query(request.query)
 
         offset = 0
-        batch_size = 1000  # Reasonable batch size for streaming
+        batch_size = self.systematic_batch_size
 
         while True:
             # Execute query with limit/offset
