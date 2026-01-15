@@ -20,6 +20,7 @@ from coreason_search.retrievers.sparse import SparseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
 from coreason_search.scout import get_scout
 from coreason_search.utils.logger import logger
+from coreason_search.veritas import get_veritas_client
 
 
 class SearchEngine:
@@ -37,6 +38,7 @@ class SearchEngine:
         self.fusion_engine = FusionEngine()
         self.reranker = get_reranker()
         self.scout = get_scout()
+        self.veritas = get_veritas_client()
 
     def execute(self, request: SearchRequest) -> SearchResponse:
         """
@@ -132,37 +134,43 @@ class SearchEngine:
         Returns a generator of Hits.
         Strictly assumes SPARSE/Boolean strategy or similar.
         Disables Rerank/Distill by default/enforced.
+        Logs to Veritas for audit.
         """
+        # Get snapshot ID for audit
+        try:
+            snapshot_id = self.sparse_retriever.get_table_version()
+        except Exception:
+            snapshot_id = -1  # Fallback if DB not ready
+
+        audit_data = {
+            "query": request.query,
+            "strategies": [s.value for s in request.strategies],
+            "snapshot_id": snapshot_id,
+        }
+        self.veritas.log_audit("SYSTEMATIC_SEARCH_START", audit_data)
         logger.info(f"Executing SYSTEMATIC search: {request.query}")
 
-        # Enforce constraints
-        # "Disables Re-ranking & Scouting"
-        # "Enforces Exact Boolean Logic" -> SparseRetriever
+        count = 0
+        try:
+            # We only support LANCE_FTS or maybe DENSE if requested (Grey Lit).
+            for strategy in request.strategies:
+                if strategy == RetrieverType.LANCE_FTS:
+                    for hit in self.sparse_retriever.retrieve_systematic(request):
+                        yield hit
+                        count += 1
+                elif strategy == RetrieverType.LANCE_DENSE:
+                    # Dense usually isn't systematic generator, but if requested...
+                    logger.warning("Dense strategy used in systematic mode - only top_k results will be yielded.")
+                    hits = self.dense_retriever.retrieve(request)
+                    for hit in hits:
+                        yield hit
+                        count += 1
 
-        # We only support LANCE_FTS or maybe DENSE if requested (Grey Lit).
-        # But for the generator, we iterate the retrievers.
-
-        # Systematic usually implies ONE exhaustive search.
-        # If multiple strategies, we chain generators?
-
-        generators = []
-        for strategy in request.strategies:
-            if strategy == RetrieverType.LANCE_FTS:
-                generators.append(self.sparse_retriever.retrieve_systematic(request))
-            elif strategy == RetrieverType.LANCE_DENSE:
-                # Dense usually isn't systematic generator, but if requested...
-                # PRD: "Disables Vector Search (unless explicitly requested...)"
-                # DenseRetriever `retrieve` returns List, not generator.
-                # If we need dense generator, we need to implement `retrieve_systematic` in Dense too.
-                # For now, assuming Sparse is the main one.
-                # Or just yield from the list.
-                hits = self.dense_retriever.retrieve(request)  # This is top_k limited!
-                # Systematic needs ALL.
-                # Dense search for ALL is expensive/weird (nearest neighbors of everything?).
-                # Usually systematic implies boolean.
-                # We'll skip dense generator for now unless required.
-                logger.warning("Dense strategy used in systematic mode - only top_k results will be yielded.")
-                yield from hits
-
-        for gen in generators:
-            yield from gen
+        finally:
+            # Log completion even if generator is interrupted (if possible, but finally works on generator close)
+            complete_data = {
+                "total_found": count,
+                # Provenance hash would ideally be calculated from all IDs, but that requires buffering.
+                # We can log the count.
+            }
+            self.veritas.log_audit("SYSTEMATIC_SEARCH_COMPLETE", complete_data)
