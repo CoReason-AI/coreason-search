@@ -10,13 +10,14 @@
 
 import json
 from typing import Generator, Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.engine import SearchEngine
-from coreason_search.schemas import RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
 
 
 class TestSearchEngine:
@@ -94,6 +95,71 @@ class TestSearchEngine:
         results = list(gen)
         assert len(results) >= 1
         assert results[0].doc_id == "1"
+
+    def test_execute_systematic_audit(self) -> None:
+        """Test systematic search execution with audit logging."""
+        self._seed_db()
+        engine = SearchEngine()
+
+        req = SearchRequest(
+            query="test",
+            strategies=[RetrieverType.LANCE_FTS],
+            top_k=5,
+        )
+
+        # Mock sparse retriever generator and version
+        # We need to mock the sparse_retriever on the engine instance we created
+        engine.sparse_retriever = MagicMock()
+        mock_hit = Hit(
+            doc_id="1",
+            content="c",
+            original_text="c",
+            distilled_text="",
+            score=1.0,
+            source_strategy="sparse",
+            metadata={},
+        )
+        engine.sparse_retriever.retrieve_systematic.return_value = iter([mock_hit])
+        engine.sparse_retriever.get_table_version.return_value = 123
+
+        # Spy on veritas
+        with patch.object(engine.veritas, "log_audit") as mock_audit:
+            gen = engine.execute_systematic(req)
+            results = list(gen)
+
+            assert len(results) == 1
+            assert results[0].doc_id == "1"
+
+            # Verify Audit Calls
+            assert mock_audit.call_count == 2
+
+            # Check Start
+            start_call = mock_audit.call_args_list[0]
+            assert start_call[0][0] == "SYSTEMATIC_SEARCH_START"
+            assert start_call[0][1]["snapshot_id"] == 123
+
+            # Check Complete
+            complete_call = mock_audit.call_args_list[1]
+            assert complete_call[0][0] == "SYSTEMATIC_SEARCH_COMPLETE"
+            assert complete_call[0][1]["total_found"] == 1
+
+    def test_execute_systematic_audit_exception(self) -> None:
+        """Test systematic search audit fallback when DB version fails."""
+        self._seed_db()
+        engine = SearchEngine()
+        req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_FTS])
+
+        engine.sparse_retriever = MagicMock()
+        engine.sparse_retriever.retrieve_systematic.return_value = iter([])
+        engine.sparse_retriever.get_table_version.side_effect = Exception("DB Error")
+
+        with patch.object(engine.veritas, "log_audit") as mock_audit:
+            list(engine.execute_systematic(req))
+
+            # Check Start log has snapshot_id = -1
+            start_call = mock_audit.call_args_list[0]
+            assert start_call[0][0] == "SYSTEMATIC_SEARCH_START"
+            assert start_call[0][1]["snapshot_id"] == -1
 
     def test_unknown_strategy_and_error_handling(self) -> None:
         """Test that unknown strategies are handled gracefully."""
