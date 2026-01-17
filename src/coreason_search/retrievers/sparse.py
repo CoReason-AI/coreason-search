@@ -8,13 +8,14 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-import json
 from typing import Any, Dict, Iterator, List, Union
 
 from coreason_search.db import get_db_manager
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 from coreason_search.utils.filters import matches_filters
+from coreason_search.utils.mapper import LanceMapper
+from coreason_search.utils.query_parser import parse_pubmed_query
 
 
 class SparseRetriever(BaseRetriever):
@@ -124,7 +125,7 @@ class SparseRetriever(BaseRetriever):
                 # naive escaping might be needed
                 parts.append(f"{k}:{v}")
             return " AND ".join(parts)
-        return str(query)
+        return parse_pubmed_query(str(query))
 
     def _map_results(self, results_list: List[Dict[str, Any]]) -> List[Hit]:
         """Map generic list of dicts to Hits."""
@@ -132,24 +133,6 @@ class SparseRetriever(BaseRetriever):
 
     def _map_single_result(self, item: Dict[str, Any]) -> Hit:
         """Map a single dict to a Hit."""
-        doc_id = item["doc_id"]
-        content = item["content"]
-        metadata_str = item["metadata"]
-
         # _score is returned by Tantivy
         score = item.get("_score", 0.0)
-
-        try:
-            metadata = json.loads(metadata_str) if metadata_str else {}
-        except json.JSONDecodeError:  # pragma: no cover
-            metadata = {}
-
-        return Hit(
-            doc_id=doc_id,
-            content=content,
-            original_text=content,
-            distilled_text="",
-            score=score,
-            source_strategy=RetrieverType.LANCE_FTS.value,
-            metadata=metadata,
-        )
+        return LanceMapper.map_hit(item, RetrieverType.LANCE_FTS.value, score)

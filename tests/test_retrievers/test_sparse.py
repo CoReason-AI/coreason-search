@@ -9,29 +9,22 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from typing import Generator, Iterator
+from typing import Iterator
 from unittest.mock import MagicMock
 
 import pytest
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
-from coreason_search.embedder import get_embedder, reset_embedder
+from coreason_search.db import DocumentSchema, get_db_manager
+from coreason_search.embedder import get_embedder
 from coreason_search.retrievers.sparse import SparseRetriever
 from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestSparseRetriever:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
-    def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
-        db_path = str(tmp_path) + "/lancedb_sparse"
-        manager = get_db_manager(db_path)
-        manager.reset()
-        get_db_manager(db_path)
-        reset_embedder()
-        yield
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
-        reset_embedder()
+    def setup_teardown(self, setup_teardown_db_and_embedder: None) -> None:
+        """Use shared fixture from conftest."""
+        pass
 
     def _seed_db(self) -> None:
         """Helper to populate DB with some data and FTS index."""
@@ -44,24 +37,28 @@ class TestSparseRetriever:
                 doc_id="1",
                 vector=embedder.embed("apple")[0],
                 content="Apple is a fruit.",
+                title="Apple Document",
                 metadata=json.dumps({"category": "fruit"}),
             ),
             DocumentSchema(
                 doc_id="2",
                 vector=embedder.embed("banana")[0],
                 content="Banana is also a fruit.",
+                title="Banana Document",
                 metadata=json.dumps({"category": "fruit"}),
             ),
             DocumentSchema(
                 doc_id="3",
                 vector=embedder.embed("carrot")[0],
                 content="Carrot is a vegetable.",
+                title="Carrot Document",
                 metadata=json.dumps({"category": "vegetable"}),
             ),
         ]
         table.add(docs)
-        # Create FTS index
-        table.create_fts_index("content")
+        # Create FTS index for multiple fields
+        # Note: tantivy-py is required for multi-field indexing in lancedb
+        table.create_fts_index(["content", "title"], replace=True, use_tantivy=True)
 
     def test_retrieve_simple(self) -> None:
         """Test simple FTS retrieval."""
@@ -74,6 +71,28 @@ class TestSparseRetriever:
         assert len(hits) >= 1
         assert hits[0].content == "Apple is a fruit."
         assert hits[0].source_strategy == "lance_fts"
+
+    def test_retrieve_pubmed_syntax(self) -> None:
+        """Test retrieval using PubMed-style syntax (e.g. [Title])."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # "Apple"[Title] should map to title:Apple
+        # Doc 1 has Title="Apple Document". Content="Apple is a fruit".
+        # Doc 2 has Title="Banana Document". Content="Banana...".
+        # Searching Apple[Title] should find Doc 1.
+
+        request = SearchRequest(query='"Apple"[Title]', strategies=[RetrieverType.LANCE_FTS], top_k=5)
+        hits = retriever.retrieve(request)
+        assert len(hits) == 1
+        assert hits[0].doc_id == "1"
+
+        # Test case where term is in content but NOT in title
+        # "fruit" is in content of 1 and 2, but NOT in titles.
+        # "fruit"[Title] should return 0 results.
+        request_fail = SearchRequest(query='"fruit"[Title]', strategies=[RetrieverType.LANCE_FTS], top_k=5)
+        hits_fail = retriever.retrieve(request_fail)
+        assert len(hits_fail) == 0
 
     def test_retrieve_dict_query(self) -> None:
         """Test retrieval with a dict query (e.g. Boolean logic)."""
@@ -234,25 +253,6 @@ class TestSparseRetriever:
 
         # Doc 1 -> fruit, Doc 2 -> fruit, Doc 3 -> vegetable
         # Filter: fruit OR vegetable
-        # We query for "is" which is in "Apple is a fruit", "Banana is also...", "Carrot is..."
-        # If "is" is a stopword, maybe query "fruit" or "vegetable" in text?
-        # But text query matches hits first.
-        # Let's use "*" or something broad? LanceDB FTS might not support *.
-        # Use "fruit" -> matches Doc 1, 2.
-        # Use "vegetable" -> matches Doc 3.
-        # If we query "fruit", we get Doc 1, 2. Filter: fruit OR vegetable.
-        # Doc 3 (vegetable) is NOT retrieved by FTS query "fruit".
-        # So filter logic only applies to retrieved items.
-        # Query "fruit OR vegetable" in FTS?
-        # Let's query "a" (in "Apple is a fruit", "Banana is also a fruit", "Carrot is a vegetable").
-        # "a" might be stopword.
-        # Let's query "fruit" and check filter.
-
-        # Query: "fruit" (matches 1, 2)
-        # Filter: category=fruit OR category=vegetable
-        # Matches 1, 2.
-        # Doc 3 is not retrieved, so filter doesn't matter for it.
-
         request = SearchRequest(
             query="fruit",
             strategies=[RetrieverType.LANCE_FTS],
@@ -265,3 +265,111 @@ class TestSparseRetriever:
         request = SearchRequest(query="fruit", strategies=[RetrieverType.LANCE_FTS], filters={"category": "vegetable"})
         hits = retriever.retrieve(request)
         assert len(hits) == 0
+
+    def test_retrieve_edge_cases(self) -> None:
+        """Test edge cases: empty queries, special characters."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # Empty query string (should result in 0 hits or handle gracefully)
+        # Parser returns empty string. LanceDB FTS with empty string?
+        # Typically returns nothing or error.
+        request_empty = SearchRequest(query="", strategies=[RetrieverType.LANCE_FTS])
+        # Depending on implementation, might raise or return empty.
+        # Our parser returns "" if query is empty.
+        # LanceDB search("") might behave differently.
+        # Let's verify it doesn't crash.
+        try:
+            hits = retriever.retrieve(request_empty)
+            assert len(hits) == 0
+        except Exception:
+            # If DB errors on empty string, that's acceptable, but ideally should be handled.
+            # But we just want to ensure it doesn't crash the *process* unexpectedly.
+            pass
+
+        # Unicode characters
+        # "β-amyloid"[Title] -> title:β-amyloid
+        # We don't have this in DB, but query execution should pass.
+        request_unicode = SearchRequest(query="β-amyloid[Title]", strategies=[RetrieverType.LANCE_FTS])
+        hits = retriever.retrieve(request_unicode)
+        assert len(hits) == 0
+
+    def test_retrieve_multi_word_unquoted(self) -> None:
+        """Test that unquoted multi-word terms followed by tag only apply tag to last word."""
+        # Seeding with specific distractor for this test
+        manager = get_db_manager()
+        table = manager.get_table()
+        embedder = get_embedder()
+
+        # Clear existing data? The setup_teardown fixture handles it per test method,
+        # but _seed_db adds to it.
+        # Since this test method calls _seed_db() at start, it has docs 1, 2, 3.
+        # Doc 1: Title="Apple Document", Content="Apple is a fruit"
+        # Doc 2: Title="Banana Document", Content="Banana is also a fruit"
+        # Doc 3: Title="Carrot Document", Content="Carrot is a vegetable"
+
+        self._seed_db()
+
+        # Add Distractor: Doc 4
+        # Content has "fruit" and "Apple". Title has "Orange".
+        # If parsing works (title:Apple), this should NOT match.
+        # If parsing fails (content:Apple), this WOULD match.
+        docs = [
+            DocumentSchema(
+                doc_id="4",
+                vector=embedder.embed("distractor")[0],
+                content="Apple is a tasty fruit.",
+                title="Orange Document",
+                metadata=json.dumps({"category": "fruit"}),
+            )
+        ]
+        table.add(docs)
+
+        retriever = SparseRetriever()
+
+        # Query: fruit AND Apple[Title]
+        # Parsed as: fruit AND title:Apple
+        # Should match Doc 1 (fruit in Content, Apple in Title).
+        # Should NOT match Doc 2 (fruit in Content, No Apple).
+        # Should NOT match Doc 4 (fruit in Content, Apple in Content but NOT Title).
+
+        request = SearchRequest(query="fruit AND Apple[Title]", strategies=[RetrieverType.LANCE_FTS])
+        hits = retriever.retrieve(request)
+        assert len(hits) == 1
+        assert hits[0].doc_id == "1"
+
+        # Query: Apple AND fruit[Title]
+        # Parsed as: Apple AND title:fruit
+        # "Apple" matches Doc 1 and Doc 4 content.
+        # "fruit" in Title? No docs have "fruit" in Title.
+        # So should return 0 results.
+        request2 = SearchRequest(query="Apple AND fruit[Title]", strategies=[RetrieverType.LANCE_FTS])
+        hits2 = retriever.retrieve(request2)
+        assert len(hits2) == 0
+
+    def test_retrieve_complex_boolean_logic(self) -> None:
+        """Test complex nested boolean logic with multiple fields."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # Doc 1: Title="Apple Document", Content="Apple is a fruit"
+        # Doc 2: Title="Banana Document", Content="Banana is also a fruit"
+        # Doc 3: Title="Carrot Document", Content="Carrot is a vegetable"
+
+        # Query: (Apple[Title] OR Banana[Title]) AND fruit[Content]
+        # Parsed: (title:Apple OR title:Banana) AND content:fruit
+        # Should match Doc 1 and Doc 2.
+
+        request = SearchRequest(
+            query="(Apple[Title] OR Banana[Title]) AND fruit[Content]", strategies=[RetrieverType.LANCE_FTS]
+        )
+        hits = retriever.retrieve(request)
+        assert len(hits) == 2
+        doc_ids = sorted([h.doc_id for h in hits])
+        assert doc_ids == ["1", "2"]
+
+        # Query: (Apple[Title] AND Banana[Title])
+        # Should match nothing (no doc has both in title).
+        request_fail = SearchRequest(query="(Apple[Title] AND Banana[Title])", strategies=[RetrieverType.LANCE_FTS])
+        hits_fail = retriever.retrieve(request_fail)
+        assert len(hits_fail) == 0

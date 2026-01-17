@@ -9,7 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import re
-from typing import Dict
+from typing import Dict, List
 
 # Map common PubMed tags to Tantivy fields
 FIELD_MAPPING: Dict[str, str] = {
@@ -21,6 +21,22 @@ FIELD_MAPPING: Dict[str, str] = {
     "mesh": "mesh_terms",
     "mh": "mesh_terms",
 }
+
+
+def _map_tags_to_fields(tags: List[str]) -> List[str]:
+    """Helper to map PubMed tags to Tantivy fields."""
+    mapped_fields = []
+    for t in tags:
+        # Check mapping or use raw if not found
+        field = FIELD_MAPPING.get(t, t)
+
+        # Special case for TiAb -> expand to Title OR Abstract
+        if field == "title_abstract":
+            mapped_fields.append("title")
+            mapped_fields.append("abstract")
+        else:
+            mapped_fields.append(field)
+    return mapped_fields
 
 
 def parse_pubmed_query(query: str) -> str:
@@ -62,7 +78,7 @@ def parse_pubmed_query(query: str) -> str:
 
     def replace_match(match: re.Match[str]) -> str:
         # Check which group matched
-        quote_char = match.group(1)
+        # quote_char = match.group(1)
         quoted_content = match.group(2)
         unquoted_term = match.group(3)
         tag_raw = match.group(4)
@@ -71,22 +87,14 @@ def parse_pubmed_query(query: str) -> str:
         if unquoted_term is not None:
             term = unquoted_term
         else:
-            term = f"{quote_char}{quoted_content}{quote_char}"
+            # Reconstruct quoted term (Tantivy usually handles standard double quotes)
+            # Use double quotes for consistency
+            term = f'"{quoted_content}"'
 
         # Parse tags (handle slashes e.g. Title/Abstract)
         tags = [t.strip().lower() for t in tag_raw.split("/")]
 
-        mapped_fields = []
-        for t in tags:
-            # Check mapping or use raw if not found
-            field = FIELD_MAPPING.get(t, t)
-
-            # Special case for TiAb -> expand to Title OR Abstract
-            if field == "title_abstract":
-                mapped_fields.append("title")
-                mapped_fields.append("abstract")
-            else:
-                mapped_fields.append(field)
+        mapped_fields = _map_tags_to_fields(tags)
 
         # Construct result
         # If multiple fields, wrap in parens with OR
@@ -96,7 +104,7 @@ def parse_pubmed_query(query: str) -> str:
         elif len(mapped_fields) == 1:
             return f"{mapped_fields[0]}:{term}"
         else:  # pragma: no cover
-            # No tag? Should not happen given regex pattern required a tag
+            # Fallback (no tag matched?) - return term as is (search all fields)
             return term
 
     # Apply replacement
