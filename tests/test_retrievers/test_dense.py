@@ -9,32 +9,20 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from typing import Generator
 
 import pytest
 from lancedb.table import Table
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
-from coreason_search.embedder import get_embedder, reset_embedder
+from coreason_search.db import DocumentSchema, get_db_manager
+from coreason_search.embedder import get_embedder
 from coreason_search.retrievers.dense import DenseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 
 
 class TestDenseRetriever:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
-    def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
-        # Reset DB and Embedder
-        db_path = str(tmp_path) + "/lancedb_dense"
-        manager = get_db_manager(db_path)
-        manager.reset()
-        # Connect fresh
-        get_db_manager(db_path)
-
-        reset_embedder()
-        yield
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
-        reset_embedder()
+    def setup_teardown(self, setup_teardown_db_and_embedder: None) -> None:
+        pass
 
     def _seed_db(self) -> None:
         """Helper to populate DB with some data."""

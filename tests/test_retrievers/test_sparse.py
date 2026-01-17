@@ -9,29 +9,22 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from typing import Generator, Iterator
+from typing import Iterator
 from unittest.mock import MagicMock
 
 import pytest
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
-from coreason_search.embedder import get_embedder, reset_embedder
+from coreason_search.db import DocumentSchema, get_db_manager
+from coreason_search.embedder import get_embedder
 from coreason_search.retrievers.sparse import SparseRetriever
 from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestSparseRetriever:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
-    def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
-        db_path = str(tmp_path) + "/lancedb_sparse"
-        manager = get_db_manager(db_path)
-        manager.reset()
-        get_db_manager(db_path)
-        reset_embedder()
-        yield
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
-        reset_embedder()
+    def setup_teardown(self, setup_teardown_db_and_embedder: None) -> None:
+        """Use shared fixture from conftest."""
+        pass
 
     def _seed_db(self) -> None:
         """Helper to populate DB with some data and FTS index."""

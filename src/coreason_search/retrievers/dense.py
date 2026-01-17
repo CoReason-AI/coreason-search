@@ -8,7 +8,6 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-import json
 from typing import List
 
 from coreason_search.db import get_db_manager
@@ -16,6 +15,7 @@ from coreason_search.embedder import get_embedder
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 from coreason_search.utils.filters import matches_filters
+from coreason_search.utils.mapper import LanceMapper
 
 
 class DenseRetriever(BaseRetriever):
@@ -89,37 +89,18 @@ class DenseRetriever(BaseRetriever):
 
         hits = []
         for item in results_list:
-            # item is a dict
-            doc_id = item["doc_id"]
-            content = item["content"]
-            metadata_str = item["metadata"]
-
-            try:
-                metadata = json.loads(metadata_str) if metadata_str else {}
-            except json.JSONDecodeError:  # pragma: no cover
-                metadata = {}
-
-            # Apply Metadata Filters (Python-side)
-            if request.filters and not matches_filters(metadata, request.filters):
-                continue
-
             # _distance is returned by LanceDB for vector search
             distance = item.get("_distance", 0.0)
-            # Convert distance to similarity score (assuming cosine distance 0..2?)
-            # Usually sim = 1 - distance/2 or similar.
             score = 1.0 - distance
 
-            hits.append(
-                Hit(
-                    doc_id=doc_id,
-                    content=content,
-                    original_text=content,  # Assuming content is full text? PRD: "original_text (raw content)"
-                    distilled_text="",  # Populated by Scout later
-                    score=score,
-                    source_strategy=RetrieverType.LANCE_DENSE.value,
-                    metadata=metadata,
-                )
-            )
+            # Map to Hit using helper
+            hit = LanceMapper.map_hit(item, RetrieverType.LANCE_DENSE.value, score)
+
+            # Apply Metadata Filters (Python-side)
+            if request.filters and not matches_filters(hit.metadata, request.filters):
+                continue
+
+            hits.append(hit)
 
         # Return only top_k after filtering
         return hits[: request.top_k]
