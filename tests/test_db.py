@@ -86,6 +86,32 @@ class TestLanceDBManager:
         assert len(results) == 1
         assert results[0].doc_id == "1"
         assert results[0].content == "This is a test document."
+        # Defaults should be None
+        assert results[0].title is None
+        assert results[0].abstract is None
+
+    def test_add_and_query_document_with_title_abstract(self, tmp_path: Path) -> None:
+        """Test adding a document with explicit title and abstract."""
+        uri = str(tmp_path / "lancedb_fts_fields")
+        manager = get_db_manager(uri)
+        table = manager.get_table()
+
+        vector = np.random.rand(1024).astype(np.float32)
+        doc = DocumentSchema(
+            doc_id="doc_ta",
+            vector=vector,
+            content="Main content",
+            title="Study on Aspirin",
+            abstract="Abstract about Aspirin",
+            metadata="{}",
+        )
+
+        table.add([doc])
+
+        results = table.search(vector).limit(1).to_pydantic(DocumentSchema)
+        assert len(results) == 1
+        assert results[0].title == "Study on Aspirin"
+        assert results[0].abstract == "Abstract about Aspirin"
 
     def test_schema_enforcement(self, tmp_path: Path) -> None:
         """Test that adding data with wrong schema fails (or at least checking schema)."""

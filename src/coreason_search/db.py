@@ -31,6 +31,8 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
     doc_id: str = Field(..., description="Unique document identifier")
     vector: Vector(VECTOR_DIM) = Field(..., description="Dense vector embedding")  # type: ignore
     content: str = Field(..., description="Main content of the document")
+    title: Optional[str] = Field(default=None, description="Document title for FTS")
+    abstract: Optional[str] = Field(default=None, description="Document abstract for FTS")
     metadata: str = Field(..., description="JSON stringified metadata")
 
     @field_validator("metadata")
