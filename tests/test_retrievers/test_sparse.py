@@ -44,24 +44,28 @@ class TestSparseRetriever:
                 doc_id="1",
                 vector=embedder.embed("apple")[0],
                 content="Apple is a fruit.",
+                title="Apple Document",
                 metadata=json.dumps({"category": "fruit"}),
             ),
             DocumentSchema(
                 doc_id="2",
                 vector=embedder.embed("banana")[0],
                 content="Banana is also a fruit.",
+                title="Banana Document",
                 metadata=json.dumps({"category": "fruit"}),
             ),
             DocumentSchema(
                 doc_id="3",
                 vector=embedder.embed("carrot")[0],
                 content="Carrot is a vegetable.",
+                title="Carrot Document",
                 metadata=json.dumps({"category": "vegetable"}),
             ),
         ]
         table.add(docs)
-        # Create FTS index
-        table.create_fts_index("content")
+        # Create FTS index for multiple fields
+        # Note: tantivy-py is required for multi-field indexing in lancedb
+        table.create_fts_index(["content", "title"], replace=True, use_tantivy=True)
 
     def test_retrieve_simple(self) -> None:
         """Test simple FTS retrieval."""
@@ -74,6 +78,28 @@ class TestSparseRetriever:
         assert len(hits) >= 1
         assert hits[0].content == "Apple is a fruit."
         assert hits[0].source_strategy == "lance_fts"
+
+    def test_retrieve_pubmed_syntax(self) -> None:
+        """Test retrieval using PubMed-style syntax (e.g. [Title])."""
+        self._seed_db()
+        retriever = SparseRetriever()
+
+        # "Apple"[Title] should map to title:Apple
+        # Doc 1 has Title="Apple Document". Content="Apple is a fruit".
+        # Doc 2 has Title="Banana Document". Content="Banana...".
+        # Searching Apple[Title] should find Doc 1.
+
+        request = SearchRequest(query='"Apple"[Title]', strategies=[RetrieverType.LANCE_FTS], top_k=5)
+        hits = retriever.retrieve(request)
+        assert len(hits) == 1
+        assert hits[0].doc_id == "1"
+
+        # Test case where term is in content but NOT in title
+        # "fruit" is in content of 1 and 2, but NOT in titles.
+        # "fruit"[Title] should return 0 results.
+        request_fail = SearchRequest(query='"fruit"[Title]', strategies=[RetrieverType.LANCE_FTS], top_k=5)
+        hits_fail = retriever.retrieve(request_fail)
+        assert len(hits_fail) == 0
 
     def test_retrieve_dict_query(self) -> None:
         """Test retrieval with a dict query (e.g. Boolean logic)."""

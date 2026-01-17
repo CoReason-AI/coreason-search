@@ -15,6 +15,7 @@ from coreason_search.db import get_db_manager
 from coreason_search.interfaces import BaseRetriever
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 from coreason_search.utils.filters import matches_filters
+from coreason_search.utils.query_parser import parse_pubmed_query
 
 
 class SparseRetriever(BaseRetriever):
@@ -124,7 +125,7 @@ class SparseRetriever(BaseRetriever):
                 # naive escaping might be needed
                 parts.append(f"{k}:{v}")
             return " AND ".join(parts)
-        return str(query)
+        return parse_pubmed_query(str(query))
 
     def _map_results(self, results_list: List[Dict[str, Any]]) -> List[Hit]:
         """Map generic list of dicts to Hits."""

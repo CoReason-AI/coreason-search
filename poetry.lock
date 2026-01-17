@@ -1332,6 +1332,34 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pylance"
+version = "1.0.2"
+description = "python wrapper for Lance columnar format"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "pylance-1.0.2-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:4f08011a1f95f529bf05b1328bb080491c4394d1811399ddd90310c4590de123"},
+    {file = "pylance-1.0.2-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:483f00e5dbe7967da97b62036049f1790dc2b20ae69546b6c30fc6fc94c42031"},
+    {file = "pylance-1.0.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ba6283f937fc640c2230117a1697ff63fb37dc9c8c0c077b6d30ef10dd5a0f87"},
+    {file = "pylance-1.0.2-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:38f34c2bf809b74f83261ce1b573ab9ef6927c111fcfdf69437224d9f07ce2e1"},
+    {file = "pylance-1.0.2-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:946bbc7c885bf336eaf82fdb020cb01ade5bebeb640ee2e754b8075e687e09dc"},
+    {file = "pylance-1.0.2-cp39-abi3-win_amd64.whl", hash = "sha256:524eeacd2aa4e5d7b0f1a5f74af332bc65556d27b1d388d217d2aaa0b545dc5d"},
+]
+
+[package.dependencies]
+lance-namespace = ">=0.2.1"
+numpy = ">=1.22"
+pyarrow = ">=14"
+
+[package.extras]
+benchmarks = ["pytest-benchmark"]
+dev = ["pyright", "ruff (==0.4.1)"]
+geo = ["geoarrow-rust-core", "geoarrow-rust-io"]
+tests = ["boto3", "datafusion (>=50.1)", "datasets", "duckdb", "ml-dtypes", "pandas", "pillow", "polars[pandas,pyarrow]", "psutil", "pytest", "tensorflow ; sys_platform == \"linux\"", "tqdm"]
+torch = ["torch"]
+
+[[package]]
 name = "pymdown-extensions"
 version = "10.20"
 description = "Extension pack for Python Markdown."
@@ -1584,6 +1612,55 @@ files = [
 ]
 
 [[package]]
+name = "tantivy"
+version = "0.25.1"
+description = "Official Python bindings for the Tantivy search engine"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "tantivy-0.25.1-cp310-cp310-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:7aa587a3dc9470584cacf5e3640fee93d12ec5f10109669c1f47c4e90820b958"},
+    {file = "tantivy-0.25.1-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:56d77fe667595693d9fa5f0b4545776d84da9526bab0273b3fc6c7536dc0d8a2"},
+    {file = "tantivy-0.25.1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5ba8c347cd48595fcaeabb28a909ebce92cf9c5e5c84ab5ba1136a280a307b5c"},
+    {file = "tantivy-0.25.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aa7c4932e8fde1f09f2d46226060e827e197c2749abdc6129d73a752773adc38"},
+    {file = "tantivy-0.25.1-cp310-cp310-win_amd64.whl", hash = "sha256:afcfc5dbb0bcd5d24531f4471737ae0896f33528426ab0b1dad3e427c19120f6"},
+    {file = "tantivy-0.25.1-cp311-cp311-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:d363d7b4207d3a5aa7f0d212420df35bed18bdb6bae26a2a8bd57428388b7c29"},
+    {file = "tantivy-0.25.1-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:8f4389cf1d889a1df7c5a3195806b4b56c37cee10d8a26faaa0dea35a867b5ff"},
+    {file = "tantivy-0.25.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:99864c09fc54652c3c2486cdf13f86cdc8200f4b481569cb291e095ca5d496e5"},
+    {file = "tantivy-0.25.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:05abf37ddbc5063c575548be0d62931629c086bff7a5a1b67cf5a8f5ebf4cd8c"},
+    {file = "tantivy-0.25.1-cp311-cp311-win_amd64.whl", hash = "sha256:f307ee8ad21597b0be23af83008fd66cfd5f958cdfa24ec0aaa08a38e86bbef4"},
+    {file = "tantivy-0.25.1-cp312-cp312-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:90fd919e5f611809f746560ecf36eb9be824dec62e21ae17a27243759edb9aa1"},
+    {file = "tantivy-0.25.1-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:4613c7cf6c23f3a97989819690a0f956d799354957de7a204abcc60083cebe02"},
+    {file = "tantivy-0.25.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c477bd20b4df804d57dfc5033431bef27cde605695ae141b03abbf6ebc069129"},
+    {file = "tantivy-0.25.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f9b1a1ba1113c523c7ff7b10f282d6c4074006f7ef8d71e1d973d51bf7291ddb"},
+    {file = "tantivy-0.25.1-cp312-cp312-win_amd64.whl", hash = "sha256:9de0bafd3bd7ac9f8f82d53e17562e9db11a5af308fe5185c4bd86feaddbe4a6"},
+    {file = "tantivy-0.25.1-cp313-cp313-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:f51ff7196c6f31719202080ed8372d5e3d51e92c749c032fb8234f012e99744c"},
+    {file = "tantivy-0.25.1-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:550e63321bfcacc003859f2fa29c1e8e56450807b3c9a501c1add27cfb9236d9"},
+    {file = "tantivy-0.25.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fde31cc8d6e122faf7902aeea32bc008a429a6e8904e34d3468126a3ec01b016"},
+    {file = "tantivy-0.25.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b11bd5a518b0be645320b47af8493f6a40c4f3234313e37adcf4534a564d27dd"},
+    {file = "tantivy-0.25.1-cp313-cp313-win_amd64.whl", hash = "sha256:cc7fe88853e06b3251ee4fa42b7a2038727f850c8765bcc8167cfc73585dd24e"},
+    {file = "tantivy-0.25.1-cp313-cp313t-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:dae99e75b7eaa9bf5bd16ab106b416370f08c135aed0e117d62a3201cd1ffe36"},
+    {file = "tantivy-0.25.1-cp313-cp313t-macosx_10_12_x86_64.whl", hash = "sha256:506e9533c5ef4d3df43bad64ffecc0aa97c76e361ea610815dc3a20a9d6b30b3"},
+    {file = "tantivy-0.25.1-cp313-cp313t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5dbd4f8f264dacbcc9dee542832da2173fd53deaaea03f082d95214f8b5ed6bc"},
+    {file = "tantivy-0.25.1-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:824c643ccb640dd9e35e00c5d5054ddf3323f56fe4219d57d428a9eeea13d22c"},
+    {file = "tantivy-0.25.1-cp313-cp313t-win_amd64.whl", hash = "sha256:09c987b840afcebac817836ac08407eff17272d8aa60ce6e291f89c81830221d"},
+    {file = "tantivy-0.25.1-cp314-cp314-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:7f5d29ae85dd0f23df8d15b3e7b341d4f9eb5a446bbb9640df48ac1f6d9e0c6c"},
+    {file = "tantivy-0.25.1-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:f2d2938fb69a74fc1bb36edfaf7f0d1596fa1264db0f377bda2195c58bcb6245"},
+    {file = "tantivy-0.25.1-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4f5ff124c4802558e627091e780b362ca944169736caba5a372eef39a79d0ae0"},
+    {file = "tantivy-0.25.1-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:43b80ef62a340416139c93d19264e5f808da48e04f9305f1092b8ed22be0a5be"},
+    {file = "tantivy-0.25.1-cp314-cp314-win_amd64.whl", hash = "sha256:286b654f40c70c1e6b64b9bc7031ed0bf5c440f5bffeaeeee21a0ee6cc39f0e2"},
+    {file = "tantivy-0.25.1-cp39-cp39-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:6ed0cdb0c46f7ef6138d20717d483ef577e156236cc8eefa4f29af740c7c3cb8"},
+    {file = "tantivy-0.25.1-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:6f1125669db85d672c4bac33a71227b316ae6a7569328db6f7953b47a21492f9"},
+    {file = "tantivy-0.25.1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:cba86cbbc6001d152042cdab9c55812595395a40b28a0d6dd742397b58bb5587"},
+    {file = "tantivy-0.25.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f666e98860762ee08a2ddf6fb1004bfe19163e1b78a41813178f2f98ace51d7b"},
+    {file = "tantivy-0.25.1-cp39-cp39-win_amd64.whl", hash = "sha256:3cb8308ec1ef1cbdfe1aa43ce1b7707a72dae3dfb5661dd94ffafd7a8f6ca235"},
+    {file = "tantivy-0.25.1.tar.gz", hash = "sha256:68a3314699a7d18fcf338b52bae8ce46a97dde1128a3e47e33fa4db7f71f265e"},
+]
+
+[package.extras]
+dev = ["nox"]
+
+[[package]]
 name = "tqdm"
 version = "4.67.1"
 description = "Fast, Extensible Progress Meter"
@@ -1733,4 +1810,4 @@ dev = ["black (>=19.3b0) ; python_version >= \"3.6\"", "pytest (>=4.6.2)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12, <3.15"
-content-hash = "a6d1fcb9c69ffcc4fdd00e96c818f1bdb0a64239154455e25920660ef3d0b584"
+content-hash = "37e0c99ca4838a1becda8c8c499502e8696b3f26fddeae986b70ee03702442b7"
