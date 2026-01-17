@@ -85,10 +85,21 @@ class LanceDBManager:
     def get_table(self, name: str = DEFAULT_TABLE_NAME) -> lancedb.table.Table:
         """
         Get the table, creating it if it doesn't exist.
+        Handles schema evolution by opening existing tables without enforcing strict schema match immediately.
         """
-        # We use exist_ok=True to handle race conditions or existence checks safely.
-        # This will open the table if it exists, or create it if it doesn't.
-        return self.db.create_table(name, schema=DocumentSchema, exist_ok=True)
+        # Check if table exists
+        tables = self.db.list_tables()
+        # lancedb > 0.26 might return an object with a .tables attribute
+        if hasattr(tables, "tables"):
+            table_names = tables.tables
+        else:
+            table_names = tables
+
+        if name in table_names:
+            return self.db.open_table(name)
+
+        # If not, create with current schema
+        return self.db.create_table(name, schema=DocumentSchema)
 
     def reset(self) -> None:
         """Reset the singleton (useful for tests)."""
