@@ -297,10 +297,7 @@ class TestSparseRetriever:
         # Unicode characters
         # "β-amyloid"[Title] -> title:β-amyloid
         # We don't have this in DB, but query execution should pass.
-        request_unicode = SearchRequest(
-            query="β-amyloid[Title]",
-            strategies=[RetrieverType.LANCE_FTS]
-        )
+        request_unicode = SearchRequest(query="β-amyloid[Title]", strategies=[RetrieverType.LANCE_FTS])
         hits = retriever.retrieve(request_unicode)
         assert len(hits) == 0
 
@@ -343,10 +340,7 @@ class TestSparseRetriever:
         # Should NOT match Doc 2 (fruit in Content, No Apple).
         # Should NOT match Doc 4 (fruit in Content, Apple in Content but NOT Title).
 
-        request = SearchRequest(
-            query="fruit AND Apple[Title]",
-            strategies=[RetrieverType.LANCE_FTS]
-        )
+        request = SearchRequest(query="fruit AND Apple[Title]", strategies=[RetrieverType.LANCE_FTS])
         hits = retriever.retrieve(request)
         assert len(hits) == 1
         assert hits[0].doc_id == "1"
@@ -356,10 +350,7 @@ class TestSparseRetriever:
         # "Apple" matches Doc 1 and Doc 4 content.
         # "fruit" in Title? No docs have "fruit" in Title.
         # So should return 0 results.
-        request2 = SearchRequest(
-            query="Apple AND fruit[Title]",
-            strategies=[RetrieverType.LANCE_FTS]
-        )
+        request2 = SearchRequest(query="Apple AND fruit[Title]", strategies=[RetrieverType.LANCE_FTS])
         hits2 = retriever.retrieve(request2)
         assert len(hits2) == 0
 
@@ -377,8 +368,7 @@ class TestSparseRetriever:
         # Should match Doc 1 and Doc 2.
 
         request = SearchRequest(
-            query="(Apple[Title] OR Banana[Title]) AND fruit[Content]",
-            strategies=[RetrieverType.LANCE_FTS]
+            query="(Apple[Title] OR Banana[Title]) AND fruit[Content]", strategies=[RetrieverType.LANCE_FTS]
         )
         hits = retriever.retrieve(request)
         assert len(hits) == 2
@@ -387,9 +377,6 @@ class TestSparseRetriever:
 
         # Query: (Apple[Title] AND Banana[Title])
         # Should match nothing (no doc has both in title).
-        request_fail = SearchRequest(
-            query="(Apple[Title] AND Banana[Title])",
-            strategies=[RetrieverType.LANCE_FTS]
-        )
+        request_fail = SearchRequest(query="(Apple[Title] AND Banana[Title])", strategies=[RetrieverType.LANCE_FTS])
         hits_fail = retriever.retrieve(request_fail)
         assert len(hits_fail) == 0
