@@ -18,7 +18,7 @@ from coreason_search.schemas import EmbeddingConfig
 
 
 class TestEmbedder:
-    @pytest.fixture(autouse=True)  # type: ignore
+    @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self) -> Generator[None, None, None]:
         reset_embedder()
         yield
