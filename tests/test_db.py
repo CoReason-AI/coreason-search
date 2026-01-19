@@ -31,10 +31,27 @@ class TestLanceDBManager:
     def test_singleton_behavior(self, tmp_path: Path) -> None:
         """Test that get_db_manager returns the same instance."""
         uri = str(tmp_path / "lancedb")
+
+        # 1. Initialize with URI
         manager1 = get_db_manager(uri)
-        manager2 = get_db_manager(uri)
+
+        # 2. Get without URI should return the existing instance
+        manager2 = get_db_manager()
         assert manager1 is manager2
-        assert manager1.uri == uri
+
+        # 3. Get with SAME URI should return existing instance
+        manager3 = get_db_manager(uri)
+        assert manager1 is manager3
+
+        # 4. Get with NEW URI should overwrite instance
+        uri2 = str(tmp_path / "lancedb_2")
+        manager4 = get_db_manager(uri2)
+        assert manager4 is not manager1
+        assert manager4.uri == uri2
+
+        # 5. Subsequent get without URI should return the NEW instance
+        manager5 = get_db_manager()
+        assert manager5 is manager4
 
     def test_table_creation(self, tmp_path: Path) -> None:
         """Test that get_table creates the table if it doesn't exist."""

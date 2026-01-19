@@ -9,7 +9,6 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
-from functools import lru_cache
 from typing import Optional
 
 import lancedb
@@ -41,11 +40,7 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
     def validate_metadata_json(cls, v: str) -> str:
         """Ensure metadata is a valid JSON string."""
         if not v:
-            return v  # Allow empty string if that's desired, or enforce {}?
-            # Let's enforce it must be valid JSON or empty.
-            # If empty string, technically not valid JSON unless it's "" which loads as... fail.
-            # But earlier tests used "" and it passed.
-            # Let's allow empty string to mean "no metadata".
+            return v
         if v.strip() == "":
             return v
         try:
@@ -76,11 +71,9 @@ class LanceDBManager:
     def get_table(self, name: str = DEFAULT_TABLE_NAME) -> lancedb.table.Table:
         """
         Get the table, creating it if it doesn't exist.
-        Handles schema evolution by opening existing tables without enforcing strict schema match immediately.
         """
         # Check if table exists
         tables = self.db.list_tables()
-        # lancedb > 0.26 might return an object with a .tables attribute
         if hasattr(tables, "tables"):
             table_names = tables.tables
         else:
@@ -89,19 +82,38 @@ class LanceDBManager:
         if name in table_names:
             return self.db.open_table(name)
 
-        # If not, create with current schema
         return self.db.create_table(name, schema=DocumentSchema)
 
 
-@lru_cache(maxsize=1)
-def get_db_manager(uri: str = "/tmp/lancedb") -> LanceDBManager:
+# Global singleton instance
+_DB_MANAGER: Optional[LanceDBManager] = None
+
+
+def get_db_manager(uri: Optional[str] = None) -> LanceDBManager:
     """
     Factory function to get the DB manager.
-    Uses lru_cache to implement Singleton pattern with parameter support.
+    Implements explicit singleton pattern.
+    If 'uri' is provided, initializes/overwrites the singleton with that URI.
+    If 'uri' is None, returns the existing singleton (or initializes default).
     """
-    return LanceDBManager(uri)
+    global _DB_MANAGER
+
+    if uri is not None:
+        # Initialize or re-initialize with specific URI
+        if _DB_MANAGER is None:
+            _DB_MANAGER = LanceDBManager(uri)
+        elif _DB_MANAGER.uri != uri:
+            _DB_MANAGER = LanceDBManager(uri)
+        return _DB_MANAGER
+
+    if _DB_MANAGER is None:
+        # Initialize default
+        _DB_MANAGER = LanceDBManager()
+
+    return _DB_MANAGER
 
 
 def reset_db_manager() -> None:
     """Reset the singleton (useful for tests)."""
-    get_db_manager.cache_clear()
+    global _DB_MANAGER
+    _DB_MANAGER = None
