@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from coreason_search.db import LanceDBManager, get_db_manager
+from coreason_search.db import get_db_manager, reset_db_manager
 from coreason_search.embedder import reset_embedder
 from coreason_search.engine import SearchEngine
 from coreason_search.schemas import RetrieverType, SearchRequest
@@ -24,14 +24,12 @@ class TestComplexSystematic:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
         db_path = str(tmp_path) + "/lancedb_complex"
-        manager = get_db_manager(db_path)
-        manager.reset()
+        reset_db_manager()
         get_db_manager(db_path)
         reset_embedder()
         reset_veritas_client()
         yield
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
+        reset_db_manager()
         reset_embedder()
         reset_veritas_client()
 

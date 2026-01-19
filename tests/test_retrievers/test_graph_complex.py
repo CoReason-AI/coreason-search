@@ -8,6 +8,8 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+from typing import cast
+
 from coreason_search.graph_client import GraphNode, MockGraphClient, reset_graph_client
 from coreason_search.retrievers.graph import GraphRetriever
 from coreason_search.schemas import RetrieverType, SearchRequest
@@ -15,188 +17,248 @@ from coreason_search.schemas import RetrieverType, SearchRequest
 
 class TestGraphRetrieverComplex:
     def setup_method(self) -> None:
+        """
+        Setup a complex graph topology for testing.
+        Topology:
+        - Protein A (Query Match)
+          -> Paper 1 (Valid) -> AE 1, AE 2
+          -> Paper 2 (Invalid - No AE) -> Protein B
+          -> Paper 3 (Valid - Shared AE) -> AE 2
+          -> Unknown Node (Invalid Label)
+        - Protein B (Not Query Match)
+          -> Paper 4 (Valid but unreachable) -> AE 3
+        """
         reset_graph_client()
+        self.retriever = GraphRetriever()
+        self.client = cast(MockGraphClient, self.retriever.client)
+        assert isinstance(self.client, MockGraphClient)
 
-    def _setup_complex_graph(self, client: MockGraphClient) -> None:
+        # clear default mock data
+        self.client.nodes = {}
+        self.client.edges = []
+
+        # 1. Create Nodes
+        nodes = [
+            # Entry points
+            GraphNode(node_id="p_a", label="Protein", name="Protein A", properties={"desc": "Target A"}),
+            GraphNode(node_id="p_b", label="Protein", name="Protein B", properties={"desc": "Target B"}),
+            # Papers
+            GraphNode(
+                node_id="paper_1",
+                label="Paper",
+                name="Paper 1",
+                properties={"content": "Content 1", "year": 2021},
+            ),
+            GraphNode(
+                node_id="paper_2",
+                label="Paper",
+                name="Paper 2",
+                properties={"content": "Content 2", "year": 2022},
+            ),
+            GraphNode(
+                node_id="paper_3",
+                label="Paper",
+                name="Paper 3",
+                properties={"content": "Content 3", "year": 2023},
+            ),
+            GraphNode(
+                node_id="paper_4",
+                label="Paper",
+                name="Paper 4",
+                properties={"content": "Content 4", "year": 2024},
+            ),
+            # Adverse Events
+            GraphNode(node_id="ae_1", label="AdverseEvent", name="Nausea", properties={}),
+            GraphNode(node_id="ae_2", label="AdverseEvent", name="Headache", properties={}),
+            GraphNode(node_id="ae_3", label="AdverseEvent", name="Dizziness", properties={}),
+            # Distractor
+            GraphNode(node_id="unk_1", label="Unknown", name="Mystery", properties={}),
+        ]
+        for n in nodes:
+            self.client.nodes[n.node_id] = n
+
+        # 2. Create Edges
+        edges = [
+            # Protein A connections
+            ("p_a", "paper_1"),
+            ("p_a", "paper_2"),
+            ("p_a", "paper_3"),
+            ("p_a", "unk_1"),
+            # Paper 1 -> AE 1, AE 2
+            ("paper_1", "ae_1"),
+            ("paper_1", "ae_2"),
+            # Paper 2 -> Protein B (Not an AE)
+            ("paper_2", "p_b"),
+            # Paper 3 -> AE 2 (Shared)
+            ("paper_3", "ae_2"),
+            # Protein B -> Paper 4
+            ("p_b", "paper_4"),
+            # Paper 4 -> AE 3
+            ("paper_4", "ae_3"),
+        ]
+        self.client.edges = [{"source": s, "target": t} for s, t in edges]
+
+    def test_complex_traversal_and_enrichment(self) -> None:
         """
-        Helper to inject complex data into the mock client.
-        Structure:
-          - "Term A1" (Protein) -> "Paper Common"
-          - "Term A2" (Protein) -> "Paper Common", "Paper Unique"
-          - "Term B" (Protein) -> (no neighbors)
-          - "Term C" (Protein) -> "Paper Safe", "Event Danger" (AdverseEvent)
-          - "Paper Broken" (Paper) -> No content property
-
-        Updated for 2-Hop Requirements:
-        Papers must connect to an "AdverseEvent" to be returned.
+        Verify:
+        - Only papers reachable from Query Node are returned.
+        - Only papers connected to an Adverse Event are returned.
+        - Metadata is correctly enriched with sorted AE lists.
         """
-        # Clear existing for clean state
-        client.nodes = {}
-        client.edges = []
-
-        # Nodes
-        client.nodes["a1"] = GraphNode(node_id="a1", label="Protein", name="Term A1")
-        client.nodes["a2"] = GraphNode(node_id="a2", label="Protein", name="Term A2")
-        client.nodes["b"] = GraphNode(node_id="b", label="Protein", name="Term B")
-        client.nodes["c"] = GraphNode(node_id="c", label="Protein", name="Term C")
-
-        client.nodes["p_common"] = GraphNode(
-            node_id="p_common",
-            label="Paper",
-            name="Common Paper",
-            properties={"content": "Common content"},
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
         )
-        client.nodes["p_unique"] = GraphNode(
-            node_id="p_unique",
-            label="Paper",
-            name="Unique Paper",
-            properties={"content": "Unique content"},
-        )
-        client.nodes["p_broken"] = GraphNode(
-            node_id="p_broken",
-            label="Paper",
-            name="Broken Paper",
-            properties={},  # Missing content
-        )
-        client.nodes["p_safe"] = GraphNode(
-            node_id="p_safe",
-            label="Paper",
-            name="Safe Paper",
-            properties={"content": "Safe content"},
-        )
-        client.nodes["e_danger"] = GraphNode(
-            node_id="e_danger",
-            label="AdverseEvent",
-            name="Danger Event",
-            properties={"content": "Bad things"},
-        )
-        client.nodes["e_toxicity"] = GraphNode(
-            node_id="e_toxicity",
-            label="AdverseEvent",
-            name="Toxicity Event",
-            properties={"content": "Toxic"},
-        )
+        hits = self.retriever.retrieve(request)
 
-        # Edges
-        # A1 -> Common
-        client.edges.append({"source": "a1", "target": "p_common"})
-        # A2 -> Common, Unique
-        client.edges.append({"source": "a2", "target": "p_common"})
-        client.edges.append({"source": "a2", "target": "p_unique"})
+        # Sort hits by doc_id to ensure deterministic assertions
+        hits.sort(key=lambda x: x.doc_id)
 
-        # 2-Hop Connections (Papers -> AdverseEvents)
-        # Connect Common to Danger
-        client.edges.append({"source": "p_common", "target": "e_danger"})
-        # Connect Unique to Toxicity
-        client.edges.append({"source": "p_unique", "target": "e_toxicity"})
-
-        # B -> None
-        # C -> Safe, Danger
-        client.edges.append({"source": "c", "target": "p_safe"})
-        client.edges.append({"source": "c", "target": "e_danger"})
-
-        # Connect Safe to Danger (so p_safe is returned)
-        client.edges.append({"source": "p_safe", "target": "e_danger"})
-
-        # Setup lookup for A1/A2 to work with substring "Term A"
-        # The mock client implementation uses `if query_lower in node.name.lower()`
-        # So "Term A" will match "Term A1" and "Term A2".
-
-    def test_multi_node_deduplication(self) -> None:
-        """
-        Scenario 1: Multi-Node Expansion & Deduplication.
-        Query "Term A" matches A1 and A2.
-        A1 -> P_Common (Connects to Danger)
-        A2 -> P_Common, P_Unique (Connects to Toxicity)
-        Expected: [P_Common, P_Unique] (P_Common appearing once).
-        """
-        retriever = GraphRetriever()
-        client = retriever.client
-        assert isinstance(client, MockGraphClient)
-        self._setup_complex_graph(client)
-
-        request = SearchRequest(query="Term A", strategies=[RetrieverType.GRAPH_NEIGHBOR])
-        hits = retriever.retrieve(request)
-
+        # Expect Paper 1 and Paper 3.
+        # Paper 2 is rejected (no AE).
+        # Paper 4 is rejected (not reachable from Protein A).
         assert len(hits) == 2
-        doc_ids = sorted([h.doc_id for h in hits])
-        assert doc_ids == ["p_common", "p_unique"]
 
-    def test_zero_neighbors(self) -> None:
+        # Check Paper 1
+        h1 = hits[0]
+        assert h1.doc_id == "paper_1"
+        assert h1.content == "Content 1"
+        # Check original metadata preserved
+        assert h1.metadata["year"] == 2021
+        # Check enriched metadata
+        assert h1.metadata["connected_adverse_events"] == ["Headache", "Nausea"]  # Alphabetical
+
+        # Check Paper 3
+        h2 = hits[1]
+        assert h2.doc_id == "paper_3"
+        assert h2.metadata["connected_adverse_events"] == ["Headache"]
+
+    def test_cycle_robustness(self) -> None:
         """
-        Scenario 3: Zero Neighbors.
-        Query "Term B" matches matches Node B, which has no edges.
-        Expected: Empty list.
+        Test that cycles in the graph do not cause infinite loops.
+        Although logic is 2-hop fixed depth, verify it handles self-references.
+        Add Edge: Paper 1 -> Protein A (Cycle)
         """
-        retriever = GraphRetriever()
-        client = retriever.client
-        assert isinstance(client, MockGraphClient)
-        self._setup_complex_graph(client)
+        self.client.edges.append({"source": "paper_1", "target": "p_a"})
 
-        request = SearchRequest(query="Term B", strategies=[RetrieverType.GRAPH_NEIGHBOR])
-        hits = retriever.retrieve(request)
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+        # Should still return results without error
+        assert len(hits) >= 1
+        ids = [h.doc_id for h in hits]
+        assert "paper_1" in ids
 
-        assert len(hits) == 0
-
-    def test_strict_label_filtering(self) -> None:
+    def test_empty_metadata_handling(self) -> None:
         """
-        Scenario 4: Strict Label Filtering.
-        Query "Term C" matches matches Node C.
-        C -> P_Safe (Paper), E_Danger (AdverseEvent).
-        P_Safe -> E_Danger (2-hop connection).
-        E_Danger is filtered (not Paper).
-        Expected: [P_Safe].
+        Test that a paper with empty properties is handled correctly.
         """
-        retriever = GraphRetriever()
-        client = retriever.client
-        assert isinstance(client, MockGraphClient)
-        self._setup_complex_graph(client)
+        # Create a paper with no properties
+        self.client.nodes["paper_empty"] = GraphNode(
+            node_id="paper_empty",
+            label="Paper",
+            name="Empty Paper",
+            properties={},
+        )
+        self.client.edges.append({"source": "p_a", "target": "paper_empty"})
+        self.client.edges.append({"source": "paper_empty", "target": "ae_1"})
 
-        request = SearchRequest(query="Term C", strategies=[RetrieverType.GRAPH_NEIGHBOR])
-        hits = retriever.retrieve(request)
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+        ids = [h.doc_id for h in hits]
+        assert "paper_empty" in ids
+        hit = next(h for h in hits if h.doc_id == "paper_empty")
+        assert hit.content == ""  # Content defaults to empty string if missing
+        assert hit.metadata["connected_adverse_events"] == ["Nausea"]
 
+    def test_multiple_start_nodes(self) -> None:
+        """
+        Test query matching multiple start nodes.
+        Query: "Protein" (Matches "Protein A" and "Protein B")
+        """
+        request = SearchRequest(
+            query="Protein",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+        hits_ids = {h.doc_id for h in hits}
+
+        # Protein A -> Paper 1, Paper 3
+        # Protein B -> Paper 4
+        assert "paper_1" in hits_ids
+        assert "paper_3" in hits_ids
+        assert "paper_4" in hits_ids
+        assert "paper_2" not in hits_ids
+
+    def test_mock_client_hop_depth_ignored(self) -> None:
+        """
+        Test that MockGraphClient handles hop_depth parameter safely.
+        """
+        # Call get_neighbors with depth != 1
+        neighbors = self.client.get_neighbors("p_a", hop_depth=2)
+        # Mock currently ignores depth > 1 but should still return direct neighbors
+        # It just does the same thing.
+        assert len(neighbors) > 0
+
+    def test_duplicate_edges_handling(self) -> None:
+        """
+        Verify redundant graph edges don't cause duplicate hits or AEs.
+        Add redundant edge: Paper 1 -> AE 1 (already exists).
+        """
+        self.client.edges.append({"source": "paper_1", "target": "ae_1"})
+
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+
+        # Check Paper 1
+        h1 = next(h for h in hits if h.doc_id == "paper_1")
+        # Should still only have ["Headache", "Nausea"] once each
+        assert h1.metadata["connected_adverse_events"] == ["Headache", "Nausea"]
+        # Should NOT duplicate the hit itself
+        assert len([h for h in hits if h.doc_id == "paper_1"]) == 1
+
+    def test_top_k_limiting(self) -> None:
+        """
+        Verify request.top_k correctly truncates the result list.
+        We have 2 valid hits (Paper 1, Paper 3).
+        Request top_k=1.
+        """
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+            top_k=1,
+        )
+        hits = self.retriever.retrieve(request)
         assert len(hits) == 1
-        assert hits[0].doc_id == "p_safe"
 
-    def test_missing_data_robustness(self) -> None:
+    def test_malformed_properties(self) -> None:
         """
-        Scenario 2: Robustness to Missing Data.
-        Inject a node that connects to "Broken Paper" (no content).
-        Connect Broken Paper to an Adverse Event to satisfy filter.
+        Verify robustness when content property is missing or None.
         """
-        retriever = GraphRetriever()
-        client = retriever.client
-        assert isinstance(client, MockGraphClient)
-        self._setup_complex_graph(client)
+        # Create a paper with None content (if schema allows? Schema says Any)
+        self.client.nodes["paper_malformed"] = GraphNode(
+            node_id="paper_malformed",
+            label="Paper",
+            name="Malformed Paper",
+            properties={"content": None},  # Explicit None
+        )
+        self.client.edges.append({"source": "p_a", "target": "paper_malformed"})
+        self.client.edges.append({"source": "paper_malformed", "target": "ae_1"})
 
-        # Connect B to Broken manually
-        client.edges.append({"source": "b", "target": "p_broken"})
-        # Connect Broken to Danger (2-hop)
-        client.edges.append({"source": "p_broken", "target": "e_danger"})
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
 
-        request = SearchRequest(query="Term B", strategies=[RetrieverType.GRAPH_NEIGHBOR])
-        hits = retriever.retrieve(request)
-
-        assert len(hits) == 1
-        assert hits[0].doc_id == "p_broken"
-        assert hits[0].content == ""  # Graceful fallback to empty string
-
-    def test_special_characters(self) -> None:
-        """
-        Scenario 5: Special Characters.
-        Query with chars that might break regex if used incorrectly, though Mock uses string 'in'.
-        """
-        retriever = GraphRetriever()
-        client = retriever.client
-        assert isinstance(client, MockGraphClient)
-        self._setup_complex_graph(client)
-
-        # Rename A1 to include special chars
-        client.nodes["a1"].name = "Protein #1 (Complex)"
-
-        request = SearchRequest(query="Protein #1", strategies=[RetrieverType.GRAPH_NEIGHBOR])
-        hits = retriever.retrieve(request)
-
-        # Should match A1 -> P_Common (Connects to Danger)
-        assert len(hits) == 1
-        assert hits[0].doc_id == "p_common"
+        hit = next(h for h in hits if h.doc_id == "paper_malformed")
+        # str(None) is 'None'
+        assert hit.content == "None"

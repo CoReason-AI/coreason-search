@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
+from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.engine import SearchEngine
 from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
@@ -24,13 +24,11 @@ class TestSearchEngine:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
         db_path = str(tmp_path) + "/lancedb_engine"
-        manager = get_db_manager(db_path)
-        manager.reset()
+        reset_db_manager()
         get_db_manager(db_path)
         reset_embedder()
         yield
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
+        reset_db_manager()
         reset_embedder()
 
     def _seed_db(self) -> None:
