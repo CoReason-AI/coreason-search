@@ -20,6 +20,11 @@ class RetrieverType(str, Enum):
     GRAPH_NEIGHBOR = "graph_neighbor"
 
 
+class ExecutionMode(str, Enum):
+    STANDARD = "STANDARD"
+    SYSTEMATIC = "SYSTEMATIC"
+
+
 class EmbeddingConfig(BaseModel):
     model_config = ConfigDict(frozen=True)  # Enable hashing for lru_cache
 
@@ -31,6 +36,9 @@ class EmbeddingConfig(BaseModel):
 class SearchRequest(BaseModel):
     query: Union[str, Dict[str, str]] = Field(..., description="String for RAG, Dict for Boolean")
     strategies: List[RetrieverType] = Field(..., min_length=1, description="List of retrieval strategies to execute")
+    execution_mode: ExecutionMode = Field(
+        default=ExecutionMode.STANDARD, description="Execution mode: STANDARD (RAG) or SYSTEMATIC (Review)"
+    )
     fusion_enabled: bool = True
     rerank_enabled: bool = True
     distill_enabled: bool = Field(default=True, description="Enable The Scout context distillation")

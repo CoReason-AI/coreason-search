@@ -188,6 +188,7 @@ class TestSearchEngine:
         )
 
         response = engine.execute(request)
+        assert isinstance(response, SearchResponse)
         # Should succeed with Dense results AND Graph results
         # "Protein X" might not be in the vector DB (seeded with apples), but Graph should return hits.
         assert len(response.hits) >= 1
@@ -212,6 +213,7 @@ class TestSearchEngine:
         )
 
         response = engine.execute(request)
+        assert isinstance(response, SearchResponse)
         assert len(response.hits) >= 1
 
     def test_rerank_distill_disabled(self) -> None:
@@ -224,6 +226,7 @@ class TestSearchEngine:
         )
 
         response = engine.execute(request)
+        assert isinstance(response, SearchResponse)
         assert len(response.hits) >= 1
         # Distilled text should be empty string (default) because Scout didn't run
         assert response.hits[0].distilled_text == ""
@@ -260,4 +263,5 @@ class TestSearchEngine:
 
         # Should NOT raise exception, but log error and continue with FTS
         response = engine.execute(request)
+        assert isinstance(response, SearchResponse)
         assert len(response.hits) >= 1

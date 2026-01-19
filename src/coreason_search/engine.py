@@ -10,14 +10,14 @@
 
 import hashlib
 import time
-from typing import Iterator, List
+from typing import Iterator, List, Union
 
 from coreason_search.fusion import FusionEngine
 from coreason_search.reranker import get_reranker
 from coreason_search.retrievers.dense import DenseRetriever
 from coreason_search.retrievers.graph import GraphRetriever
 from coreason_search.retrievers.sparse import SparseRetriever
-from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import ExecutionMode, Hit, RetrieverType, SearchRequest, SearchResponse
 from coreason_search.scout import get_scout
 from coreason_search.utils.logger import logger
 from coreason_search.veritas import get_veritas_client
@@ -40,11 +40,15 @@ class SearchEngine:
         self.scout = get_scout()
         self.veritas = get_veritas_client()
 
-    def execute(self, request: SearchRequest) -> SearchResponse:
+    def execute(self, request: SearchRequest) -> Union[SearchResponse, Iterator[Hit]]:
         """
-        Execute a standard search request (RAG, Ad-hoc).
-        Returns a SearchResponse with top-k hits.
+        Execute a standard search request (RAG, Ad-hoc) or Systematic Search.
+        Returns a SearchResponse with top-k hits for STANDARD mode,
+        or an Iterator[Hit] for SYSTEMATIC mode.
         """
+        if request.execution_mode == ExecutionMode.SYSTEMATIC:
+            return self.execute_systematic(request)
+
         start_time = time.time()
         logger.info(f"Executing search: {request.strategies} query={request.query}")
 
