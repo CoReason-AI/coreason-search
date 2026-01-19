@@ -9,7 +9,8 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from functools import lru_cache
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field
 
@@ -134,17 +135,12 @@ class MockGraphClient(BaseGraphClient):
         return neighbors
 
 
-_graph_client_instance: Optional[BaseGraphClient] = None
-
-
+@lru_cache(maxsize=32)
 def get_graph_client() -> BaseGraphClient:
     """Singleton factory."""
-    global _graph_client_instance
-    if _graph_client_instance is None:
-        _graph_client_instance = MockGraphClient()
-    return _graph_client_instance
+    return MockGraphClient()
 
 
 def reset_graph_client() -> None:
-    global _graph_client_instance
-    _graph_client_instance = None
+    """Reset singleton (clear cache)."""
+    get_graph_client.cache_clear()

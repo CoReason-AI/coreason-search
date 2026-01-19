@@ -26,6 +26,9 @@ class TestGraphRetrieverComplex:
           - "Term B" (Protein) -> (no neighbors)
           - "Term C" (Protein) -> "Paper Safe", "Event Danger" (AdverseEvent)
           - "Paper Broken" (Paper) -> No content property
+
+        Updated for 2-Hop Requirements:
+        Papers must connect to an "AdverseEvent" to be returned.
         """
         # Clear existing for clean state
         client.nodes = {}
@@ -67,6 +70,12 @@ class TestGraphRetrieverComplex:
             name="Danger Event",
             properties={"content": "Bad things"},
         )
+        client.nodes["e_toxicity"] = GraphNode(
+            node_id="e_toxicity",
+            label="AdverseEvent",
+            name="Toxicity Event",
+            properties={"content": "Toxic"},
+        )
 
         # Edges
         # A1 -> Common
@@ -74,10 +83,20 @@ class TestGraphRetrieverComplex:
         # A2 -> Common, Unique
         client.edges.append({"source": "a2", "target": "p_common"})
         client.edges.append({"source": "a2", "target": "p_unique"})
+
+        # 2-Hop Connections (Papers -> AdverseEvents)
+        # Connect Common to Danger
+        client.edges.append({"source": "p_common", "target": "e_danger"})
+        # Connect Unique to Toxicity
+        client.edges.append({"source": "p_unique", "target": "e_toxicity"})
+
         # B -> None
         # C -> Safe, Danger
         client.edges.append({"source": "c", "target": "p_safe"})
         client.edges.append({"source": "c", "target": "e_danger"})
+
+        # Connect Safe to Danger (so p_safe is returned)
+        client.edges.append({"source": "p_safe", "target": "e_danger"})
 
         # Setup lookup for A1/A2 to work with substring "Term A"
         # The mock client implementation uses `if query_lower in node.name.lower()`
@@ -87,8 +106,8 @@ class TestGraphRetrieverComplex:
         """
         Scenario 1: Multi-Node Expansion & Deduplication.
         Query "Term A" matches A1 and A2.
-        A1 -> P_Common
-        A2 -> P_Common, P_Unique
+        A1 -> P_Common (Connects to Danger)
+        A2 -> P_Common, P_Unique (Connects to Toxicity)
         Expected: [P_Common, P_Unique] (P_Common appearing once).
         """
         retriever = GraphRetriever()
@@ -124,6 +143,8 @@ class TestGraphRetrieverComplex:
         Scenario 4: Strict Label Filtering.
         Query "Term C" matches matches Node C.
         C -> P_Safe (Paper), E_Danger (AdverseEvent).
+        P_Safe -> E_Danger (2-hop connection).
+        E_Danger is filtered (not Paper).
         Expected: [P_Safe].
         """
         retriever = GraphRetriever()
@@ -141,6 +162,7 @@ class TestGraphRetrieverComplex:
         """
         Scenario 2: Robustness to Missing Data.
         Inject a node that connects to "Broken Paper" (no content).
+        Connect Broken Paper to an Adverse Event to satisfy filter.
         """
         retriever = GraphRetriever()
         client = retriever.client
@@ -149,6 +171,8 @@ class TestGraphRetrieverComplex:
 
         # Connect B to Broken manually
         client.edges.append({"source": "b", "target": "p_broken"})
+        # Connect Broken to Danger (2-hop)
+        client.edges.append({"source": "p_broken", "target": "e_danger"})
 
         request = SearchRequest(query="Term B", strategies=[RetrieverType.GRAPH_NEIGHBOR])
         hits = retriever.retrieve(request)
@@ -173,6 +197,6 @@ class TestGraphRetrieverComplex:
         request = SearchRequest(query="Protein #1", strategies=[RetrieverType.GRAPH_NEIGHBOR])
         hits = retriever.retrieve(request)
 
-        # Should match A1 -> P_Common
+        # Should match A1 -> P_Common (Connects to Danger)
         assert len(hits) == 1
         assert hits[0].doc_id == "p_common"

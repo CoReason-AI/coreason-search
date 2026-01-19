@@ -27,18 +27,16 @@ class TestGraphRetriever:
 
         hits = retriever.retrieve(request)
         # Mock Graph: Protein X -> Paper A, Paper B.
-        # Paper A -> Liver Failure (but we might not traverse 2 hops or filter non-papers)
-        # Code: "Filter: Only return 'Paper' nodes"
-        # Neighbors of Protein X are Paper A, Paper B. Both are Papers.
-        assert len(hits) == 2
+        # Paper A -> Liver Failure (AdverseEvent).
+        # Paper B -> (No AdverseEvent).
+        # New 2-hop logic filters Paper B.
+        assert len(hits) == 1
+        assert hits[0].doc_id == "paper_a"
 
         # Verify hit structure
         assert hits[0].source_strategy == "graph_neighbor"
         assert hits[0].score == 1.0
-        # Check content
-        contents = sorted([h.content for h in hits])
-        assert "Protein X is safe." in contents
-        assert "This paper discusses Protein X and liver failure." in contents
+        assert "This paper discusses Protein X and liver failure." in hits[0].content
 
     def test_retrieve_no_node(self) -> None:
         """Test when initial node search fails."""
@@ -56,20 +54,21 @@ class TestGraphRetriever:
             strategies=[RetrieverType.GRAPH_NEIGHBOR],
         )
         hits = retriever.retrieve(request)
-        assert len(hits) == 2
+        # Same as test_retrieve_found, expects 1 hit due to 2-hop filtering
+        assert len(hits) == 1
+        assert hits[0].doc_id == "paper_a"
 
     def test_filter_non_papers(self) -> None:
         """
-        Test that non-paper neighbors are filtered out if the logic enforces it.
-        Let's add a neighbor to Protein X that is NOT a paper in the mock?
-        The Mock is hardcoded.
-        Let's modify the mock instance.
+        Test that non-paper neighbors are filtered out.
         """
         retriever = GraphRetriever()
         client = retriever.client
         assert isinstance(client, MockGraphClient)
 
         # Add a node "Adverse Event Z" connected to Protein X directly
+        # This is a 1-hop neighbor that is NOT a paper.
+        # It should be filtered out by the "neighbor.label == 'Paper'" check.
         client.nodes["ae_z"] = client.nodes["liver_failure"].model_copy()
         client.nodes["ae_z"].node_id = "ae_z"
         client.nodes["ae_z"].name = "Rash"
@@ -79,8 +78,6 @@ class TestGraphRetriever:
         request = SearchRequest(query="Protein X", strategies=[RetrieverType.GRAPH_NEIGHBOR])
         hits = retriever.retrieve(request)
 
-        # Should still be 2 papers. "Rash" (AdverseEvent) should be filtered.
-        assert len(hits) == 2
-        for hit in hits:
-            # ensure no adverse event content
-            assert hit.content != "Rash"
+        # Should still be 1 paper (Paper A). Paper B is filtered (no AE). AE Z is filtered (not Paper).
+        assert len(hits) == 1
+        assert hits[0].doc_id == "paper_a"

@@ -8,10 +8,29 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Dict, List, Optional, Union
+from abc import ABC, abstractmethod
+from functools import lru_cache
+from typing import Dict, List, Union
 
-from coreason_search.interfaces import BaseScout
 from coreason_search.schemas import Hit
+
+
+class BaseScout(ABC):
+    """Abstract base class for The Scout (Context Distiller)."""
+
+    @abstractmethod
+    def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
+        """
+        Distill the content of the hits, removing irrelevant parts.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to process.
+
+        Returns:
+            List[Hit]: The list of hits with 'distilled_text' populated/updated.
+        """
+        pass  # pragma: no cover
 
 
 class MockScout(BaseScout):
@@ -55,18 +74,12 @@ class MockScout(BaseScout):
         return distilled_hits
 
 
-_scout_instance: Optional[BaseScout] = None
-
-
+@lru_cache(maxsize=32)
 def get_scout() -> BaseScout:
     """Singleton factory for Scout."""
-    global _scout_instance
-    if _scout_instance is None:
-        _scout_instance = MockScout()
-    return _scout_instance
+    return MockScout()
 
 
 def reset_scout() -> None:
     """Reset singleton."""
-    global _scout_instance
-    _scout_instance = None
+    get_scout.cache_clear()

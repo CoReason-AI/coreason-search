@@ -8,10 +8,30 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Dict, List, Optional, Union
+from abc import ABC, abstractmethod
+from functools import lru_cache
+from typing import Dict, List, Union
 
-from coreason_search.interfaces import BaseReranker
 from coreason_search.schemas import Hit
+
+
+class BaseReranker(ABC):
+    """Abstract base class for re-rankers."""
+
+    @abstractmethod
+    def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
+        """
+        Re-rank the hits using a cross-encoder or other logic.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to re-rank.
+            top_k: The number of top results to return.
+
+        Returns:
+            List[Hit]: The re-ranked list of hits.
+        """
+        pass  # pragma: no cover
 
 
 class MockReranker(BaseReranker):
@@ -57,17 +77,11 @@ class MockReranker(BaseReranker):
         return scored_hits[:top_k]
 
 
-_reranker_instance: Optional[BaseReranker] = None
-
-
+@lru_cache(maxsize=32)
 def get_reranker() -> BaseReranker:
     """Singleton factory for Reranker."""
-    global _reranker_instance
-    if _reranker_instance is None:
-        _reranker_instance = MockReranker()
-    return _reranker_instance
+    return MockReranker()
 
 
 def reset_reranker() -> None:
-    global _reranker_instance
-    _reranker_instance = None
+    get_reranker.cache_clear()
