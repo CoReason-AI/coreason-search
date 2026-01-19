@@ -9,7 +9,8 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from functools import lru_cache
+from typing import Any, Dict
 
 from coreason_search.utils.logger import logger
 
@@ -51,18 +52,12 @@ class MockVeritasClient(VeritasProtocol):
         logger.info(f"VERITAS_AUDIT: {audit_payload}")
 
 
-_veritas_instance: Optional[VeritasProtocol] = None
-
-
+@lru_cache(maxsize=32)
 def get_veritas_client() -> VeritasProtocol:
     """Singleton factory for Veritas Client."""
-    global _veritas_instance
-    if _veritas_instance is None:
-        _veritas_instance = MockVeritasClient()
-    return _veritas_instance
+    return MockVeritasClient()
 
 
 def reset_veritas_client() -> None:
     """Reset singleton (for testing)."""
-    global _veritas_instance
-    _veritas_instance = None
+    get_veritas_client.cache_clear()
