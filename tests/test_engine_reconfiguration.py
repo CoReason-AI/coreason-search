@@ -3,10 +3,11 @@ from typing import Generator
 
 import pytest
 
+from coreason_search.config import Settings
 from coreason_search.db import DocumentSchema, reset_db_manager
 from coreason_search.embedder import reset_embedder
 from coreason_search.engine import SearchEngine
-from coreason_search.schemas import AppConfig, RetrieverType, SearchRequest
+from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestEngineReconfiguration:
@@ -28,11 +29,11 @@ class TestEngineReconfiguration:
         path_b = str(tmp_path) + "/db_b"
 
         # Init Engine A
-        config_a = AppConfig(database_uri=path_a)
+        config_a = Settings(database_uri=path_a)
         engine_a = SearchEngine(config_a)
 
         # Init Engine B
-        config_b = AppConfig(database_uri=path_b)
+        config_b = Settings(database_uri=path_b)
         engine_b = SearchEngine(config_b)
 
         # Seed DB A via Engine A (using its internal components)

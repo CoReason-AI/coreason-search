@@ -12,7 +12,7 @@ import hashlib
 import time
 from typing import Iterator, List, Optional, Union
 
-from coreason_search.config import load_config
+from coreason_search.config import Settings, load_config
 from coreason_search.db import get_db_manager
 from coreason_search.embedder import get_embedder
 from coreason_search.fusion import FusionEngine
@@ -20,7 +20,7 @@ from coreason_search.reranker import get_reranker
 from coreason_search.retrievers.dense import DenseRetriever
 from coreason_search.retrievers.graph import GraphRetriever
 from coreason_search.retrievers.sparse import SparseRetriever
-from coreason_search.schemas import AppConfig, Hit, RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
 from coreason_search.scout import get_scout
 from coreason_search.utils.logger import logger
 from coreason_search.veritas import get_veritas_client
@@ -32,16 +32,16 @@ class SearchEngine:
     Orchestrates Embedder, Retrievers, Fusion, Reranker, and Scout.
     """
 
-    def __init__(self, config: Optional[Union[AppConfig, str]] = None) -> None:
+    def __init__(self, config: Optional[Union[Settings, str]] = None) -> None:
         """
         Initialize the Search Engine.
 
         Args:
-            config: An AppConfig object or path to a config file.
+            config: A Settings object or path to a config file.
         """
         if isinstance(config, str):
             self.config = load_config(config)
-        elif isinstance(config, AppConfig):
+        elif isinstance(config, Settings):
             self.config = config
         else:
             self.config = load_config()

@@ -11,8 +11,8 @@
 import pytest
 from pydantic import ValidationError
 
+from coreason_search.config import EmbeddingConfig
 from coreason_search.schemas import (
-    EmbeddingConfig,
     Hit,
     RetrieverType,
     SearchRequest,

@@ -14,10 +14,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from coreason_search.config import Settings
 from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.engine import SearchEngine
-from coreason_search.schemas import AppConfig, Hit, RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
 
 
 class TestSearchEngine:
@@ -33,7 +34,7 @@ class TestSearchEngine:
 
     def _get_engine(self) -> SearchEngine:
         """Helper to initialize engine with the correct DB URI."""
-        config = AppConfig(database_uri=self.db_path)
+        config = Settings(database_uri=self.db_path)
         return SearchEngine(config)
 
     def _seed_db(self) -> None:

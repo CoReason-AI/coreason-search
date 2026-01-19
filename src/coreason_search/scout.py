@@ -13,7 +13,8 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
-from coreason_search.schemas import Hit, ScoutConfig
+from coreason_search.config import ScoutConfig
+from coreason_search.schemas import Hit
 from coreason_search.utils.common import extract_query_text
 
 # Pre-compiled regex for sentence splitting

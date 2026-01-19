@@ -12,7 +12,8 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
-from coreason_search.schemas import Hit, RerankerConfig
+from coreason_search.config import RerankerConfig
+from coreason_search.schemas import Hit
 
 
 class BaseReranker(ABC):

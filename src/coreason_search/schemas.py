@@ -11,48 +11,13 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class RetrieverType(str, Enum):
     LANCE_DENSE = "lance_dense"
     LANCE_FTS = "lance_fts"
     GRAPH_NEIGHBOR = "graph_neighbor"
-
-
-class EmbeddingConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)  # Enable hashing for lru_cache
-
-    model_name: str = "Alibaba-NLP/gte-Qwen2-7B-instruct"
-    context_length: int = Field(default=32768, gt=0)
-    batch_size: int = Field(default=1, gt=0)
-
-
-class RerankerConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    model_name: str = "BAAI/bge-reranker-v2-m3"
-
-
-class ScoutConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    model_name: str = "microsoft/llmlingua-2-bert-base-multilingual-cased-meetingbank"
-    threshold: float = Field(default=0.4, ge=0.0, le=1.0)
-
-
-class AppConfig(BaseModel):
-    """
-    Root configuration for the search application.
-    """
-
-    model_config = ConfigDict(frozen=True)
-
-    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
-    reranker: RerankerConfig = Field(default_factory=RerankerConfig)
-    scout: ScoutConfig = Field(default_factory=ScoutConfig)
-    database_uri: str = Field(default="/tmp/lancedb")
-    env: str = Field(default="development")
 
 
 class SearchRequest(BaseModel):

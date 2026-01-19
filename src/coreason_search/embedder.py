@@ -14,7 +14,7 @@ from typing import List, Optional, Union
 
 import numpy as np
 
-from coreason_search.schemas import EmbeddingConfig
+from coreason_search.config import EmbeddingConfig
 
 
 class BaseEmbedder(ABC):
