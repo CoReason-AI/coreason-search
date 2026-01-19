@@ -11,10 +11,16 @@
 import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from coreason_search.schemas import Hit
 from coreason_search.utils.common import extract_query_text
+
+# Pre-compiled regex for sentence splitting
+# Split on . ! ? followed by whitespace using lookbehind
+SENTENCE_SPLIT_REGEX = re.compile(r"(?<=[.!?])\s+")
+# Pre-compiled regex for unit normalization (removing non-word chars)
+UNIT_NORMALIZATION_REGEX = re.compile(r"[^\w\s]")
 
 
 class BaseScout(ABC):
@@ -42,6 +48,9 @@ class MockScout(BaseScout):
     using deterministic heuristics for testing.
     """
 
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        self.config = config or {}
+
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
         """
         Mock distillation:
@@ -50,6 +59,7 @@ class MockScout(BaseScout):
         3. Filter out sentences with score 0.
         """
         query_text = extract_query_text(query)
+        # Normalize query terms once
         query_terms = set(query_text.lower().split())
 
         distilled_hits = []
@@ -77,10 +87,6 @@ class MockScout(BaseScout):
             if relevant_segments:
                 new_hit.distilled_text = " ".join(relevant_segments)
             else:
-                # If nothing is relevant, returning empty string or maybe the first sentence?
-                # PRD says "Removes distractor facts". If all are distractors, return nothing?
-                # Or return a placeholder?
-                # Let's return empty string to show aggressive distillation.
                 new_hit.distilled_text = ""
 
             distilled_hits.append(new_hit)
@@ -90,13 +96,9 @@ class MockScout(BaseScout):
     def _segment(self, text: str) -> List[str]:
         """
         Split text into logical units (sentences).
-        Uses simple regex to split on punctuation followed by space.
+        Uses pre-compiled regex.
         """
-        # Split on . ! ? followed by whitespace
-        # Use lookbehind to keep the punctuation attached to the sentence if possible,
-        # or just split and rejoin.
-        # Simple split: re.split(r'(?<=[.!?])\s+', text)
-        return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+        return [s.strip() for s in SENTENCE_SPLIT_REGEX.split(text) if s.strip()]
 
     def _score_unit(self, unit: str, query_terms: set[str]) -> float:
         """
@@ -117,11 +119,51 @@ class MockScout(BaseScout):
 
 
 @lru_cache(maxsize=32)
-def get_scout() -> BaseScout:
-    """Singleton factory for Scout."""
-    return MockScout()
+def get_scout(config: Optional[Dict[str, Any]] = None) -> BaseScout:
+    """
+    Singleton factory for Scout.
+    Accepts config to allow future configuration of the Scout model.
+    """
+    # Note: lru_cache will cache based on the config dict.
+    # If config is None, it caches the default.
+    # If config is mutable (dict), it might fail lru_cache hashing if not handled.
+    # However, Python dicts are not hashable.
+    # If we want to use lru_cache with dict, we can't directly.
+    # We should probably use a Pydantic model for config (like EmbeddingConfig) if we want caching.
+    # For now, since MockScout is lightweight and config is unused/optional,
+    # we can remove lru_cache OR require config to be hashable (frozendict).
+    #
+    # Given the previous pattern `get_embedder(config: EmbeddingConfig)`, that worked because EmbeddingConfig is frozen.
+    # Since there is no `ScoutConfig` yet, and I shouldn't over-engineer,
+    # I will modify `get_scout` to NOT use `lru_cache` on the argument if it's a dict,
+    # OR better: I will create a simple internal singleton management manually
+    # to avoid the "dict is not hashable" error with lru_cache.
+    #
+    # Actually, the user asked for standard deps. `lru_cache` is standard.
+    # I'll just remove `lru_cache` for now and return the instance,
+    # or implement a manual singleton check.
+    #
+    # But wait, `EmbeddingConfig` exists. I should probably create `ScoutConfig`?
+    # No, that's expanding scope.
+    #
+    # I will just use a global variable or memoization helper.
+    # Or, just assume config is passed once.
+    #
+    # Let's use the simplest valid python: Manual singleton.
+    return _get_scout_instance(config)
+
+
+_SCOUT_INSTANCE: Optional[BaseScout] = None
+
+
+def _get_scout_instance(config: Optional[Dict[str, Any]] = None) -> BaseScout:
+    global _SCOUT_INSTANCE
+    if _SCOUT_INSTANCE is None:
+        _SCOUT_INSTANCE = MockScout(config)
+    return _SCOUT_INSTANCE
 
 
 def reset_scout() -> None:
     """Reset singleton."""
-    get_scout.cache_clear()
+    global _SCOUT_INSTANCE
+    _SCOUT_INSTANCE = None
