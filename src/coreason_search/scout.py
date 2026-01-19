@@ -8,11 +8,13 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, List, Union
 
 from coreason_search.schemas import Hit
+from coreason_search.utils.common import extract_query_text
 
 
 class BaseScout(ABC):
@@ -36,42 +38,83 @@ class BaseScout(ABC):
 class MockScout(BaseScout):
     """
     Mock implementation of The Scout.
-    Does not use heavy ML models.
+    Implements the Segmentation -> Scoring -> Filtering pipeline
+    using deterministic heuristics for testing.
     """
 
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
         """
-        Mock distillation: just copies original_text to distilled_text,
-        maybe truncates it to simulate 'distillation'.
+        Mock distillation:
+        1. Segment text into sentences.
+        2. Score sentences based on keyword overlap with query.
+        3. Filter out sentences with score 0.
         """
+        query_text = extract_query_text(query)
+        query_terms = set(query_text.lower().split())
+
         distilled_hits = []
         for hit in hits:
-            # For the mock, we pretend we 'distilled' it by taking the first 50% of the characters
-            # or just copying it if it's short.
-            # This simulates the "removal of fluff".
-            original_len = len(hit.original_text)
-            # If empty, slicing gives empty
-            keep_len = max(1, original_len // 2) if original_len > 0 else 0
-
-            # Important: In a real implementation, we'd update distilled_text.
-            # We must return a new Hit or modify the existing one.
-            # Pydantic models are mutable by default unless configured otherwise.
-
-            # Let's create a copy to avoid side effects on the input list if needed,
-            # but for performance we might modify in place.
-            # The interface says returns List[Hit].
-
-            # We'll just modify the current hit instance for now or create a copy if we want to be functional.
-            # Given Pydantic, copy() (v1) or model_copy() (v2) is good.
+            # Create a copy of the hit
             new_hit = hit.model_copy()
-            if original_len == 0:
-                new_hit.distilled_text = "..."
+            original_text = hit.original_text
+
+            if not original_text:
+                new_hit.distilled_text = ""
+                distilled_hits.append(new_hit)
+                continue
+
+            # 1. Segmentation
+            segments = self._segment(original_text)
+
+            # 2. Scoring & 3. Filtering
+            relevant_segments = []
+            for seg in segments:
+                score = self._score_unit(seg, query_terms)
+                if score > 0.5:  # Threshold
+                    relevant_segments.append(seg)
+
+            # Reconstruct
+            if relevant_segments:
+                new_hit.distilled_text = " ".join(relevant_segments)
             else:
-                new_hit.distilled_text = hit.original_text[:keep_len] + "..."
+                # If nothing is relevant, returning empty string or maybe the first sentence?
+                # PRD says "Removes distractor facts". If all are distractors, return nothing?
+                # Or return a placeholder?
+                # Let's return empty string to show aggressive distillation.
+                new_hit.distilled_text = ""
 
             distilled_hits.append(new_hit)
 
         return distilled_hits
+
+    def _segment(self, text: str) -> List[str]:
+        """
+        Split text into logical units (sentences).
+        Uses simple regex to split on punctuation followed by space.
+        """
+        # Split on . ! ? followed by whitespace
+        # Use lookbehind to keep the punctuation attached to the sentence if possible,
+        # or just split and rejoin.
+        # Simple split: re.split(r'(?<=[.!?])\s+', text)
+        return [s.strip() for s in re.split(r"(?<=[.!?])\s+", text) if s.strip()]
+
+    def _score_unit(self, unit: str, query_terms: set[str]) -> float:
+        """
+        Score a unit based on presence of query terms.
+        Returns 1.0 if any query term is present, 0.0 otherwise.
+        """
+        # Simple tokenization of unit
+        # Remove punctuation for matching
+        unit_clean = re.sub(r"[^\w\s]", "", unit).lower()
+        unit_terms = set(unit_clean.split())
+
+        # Check intersection
+        if not query_terms:
+            return 0.0
+
+        if query_terms & unit_terms:
+            return 1.0
+        return 0.0
 
 
 @lru_cache(maxsize=32)
