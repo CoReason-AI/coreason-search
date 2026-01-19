@@ -204,3 +204,61 @@ class TestGraphRetrieverComplex:
         # Mock currently ignores depth > 1 but should still return direct neighbors
         # It just does the same thing.
         assert len(neighbors) > 0
+
+    def test_duplicate_edges_handling(self) -> None:
+        """
+        Verify redundant graph edges don't cause duplicate hits or AEs.
+        Add redundant edge: Paper 1 -> AE 1 (already exists).
+        """
+        self.client.edges.append({"source": "paper_1", "target": "ae_1"})
+
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+
+        # Check Paper 1
+        h1 = next(h for h in hits if h.doc_id == "paper_1")
+        # Should still only have ["Headache", "Nausea"] once each
+        assert h1.metadata["connected_adverse_events"] == ["Headache", "Nausea"]
+        # Should NOT duplicate the hit itself
+        assert len([h for h in hits if h.doc_id == "paper_1"]) == 1
+
+    def test_top_k_limiting(self) -> None:
+        """
+        Verify request.top_k correctly truncates the result list.
+        We have 2 valid hits (Paper 1, Paper 3).
+        Request top_k=1.
+        """
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+            top_k=1,
+        )
+        hits = self.retriever.retrieve(request)
+        assert len(hits) == 1
+
+    def test_malformed_properties(self) -> None:
+        """
+        Verify robustness when content property is missing or None.
+        """
+        # Create a paper with None content (if schema allows? Schema says Any)
+        self.client.nodes["paper_malformed"] = GraphNode(
+            node_id="paper_malformed",
+            label="Paper",
+            name="Malformed Paper",
+            properties={"content": None},  # Explicit None
+        )
+        self.client.edges.append({"source": "p_a", "target": "paper_malformed"})
+        self.client.edges.append({"source": "paper_malformed", "target": "ae_1"})
+
+        request = SearchRequest(
+            query="Protein A",
+            strategies=[RetrieverType.GRAPH_NEIGHBOR],
+        )
+        hits = self.retriever.retrieve(request)
+
+        hit = next(h for h in hits if h.doc_id == "paper_malformed")
+        # str(None) is 'None'
+        assert hit.content == "None"
