@@ -111,3 +111,54 @@ def test_hf_embedder_empty_input(clean_embedder: None) -> None:
             res = embedder.embed([])
             assert res.shape == (0, 768)
             mock_model_instance.encode.assert_not_called()
+
+
+def test_auto_fallback_on_init_error(clean_embedder: None) -> None:
+    """Test that 'auto' falls back to MockEmbedder if model init crashes."""
+    mock_st_cls = MagicMock()
+    mock_st_cls.side_effect = RuntimeError("Model not found")
+
+    with patch.dict(sys.modules, {"sentence_transformers": MagicMock()}):
+        with patch("sentence_transformers.SentenceTransformer", mock_st_cls):
+            config = EmbeddingConfig(provider="auto")
+            embedder = get_embedder(config)
+
+            # Should catch RuntimeError and return Mock
+            assert isinstance(embedder, MockEmbedder)
+
+
+def test_explicit_hf_init_error(clean_embedder: None) -> None:
+    """Test that explicit 'hf' raises error if model init crashes."""
+    mock_st_cls = MagicMock()
+    mock_st_cls.side_effect = RuntimeError("Model not found")
+
+    with patch.dict(sys.modules, {"sentence_transformers": MagicMock()}):
+        with patch("sentence_transformers.SentenceTransformer", mock_st_cls):
+            config = EmbeddingConfig(provider="hf")
+
+            # Should propagate RuntimeError
+            with pytest.raises(RuntimeError, match="Model not found"):
+                get_embedder(config)
+
+
+def test_embed_mixed_input(clean_embedder: None) -> None:
+    """Test embedding mixed valid and empty strings/unicode."""
+    mock_st_cls = MagicMock()
+    mock_model_instance = MagicMock()
+    mock_st_cls.return_value = mock_model_instance
+
+    expected_emb = np.array([[0.1], [0.0], [0.5]], dtype=np.float32)
+    mock_model_instance.encode.return_value = expected_emb
+
+    with patch.dict(sys.modules, {"sentence_transformers": MagicMock()}):
+        with patch("sentence_transformers.SentenceTransformer", mock_st_cls):
+            config = EmbeddingConfig(provider="hf")
+            embedder = get_embedder(config)
+
+            mixed_input = ["valid", "", "🚀"]
+            res = embedder.embed(mixed_input)
+
+            assert np.array_equal(res, expected_emb)
+            mock_model_instance.encode.assert_called_with(
+                mixed_input, batch_size=1, normalize_embeddings=True, convert_to_numpy=True, show_progress_bar=False
+            )
