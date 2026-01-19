@@ -60,17 +60,18 @@ class GraphRetriever(BaseRetriever):
                     # Perform 2nd hop
                     paper_neighbors = self.client.get_neighbors(neighbor.node_id)
 
-                    # Identify Adverse Events
-                    adverse_events = [n.name for n in paper_neighbors if n.label == "AdverseEvent"]
+                    # Identify Adverse Events (Use set for deduplication)
+                    adverse_events_set = {n.name for n in paper_neighbors if n.label == "AdverseEvent"}
 
-                    if adverse_events:
+                    if adverse_events_set:
                         seen_ids.add(neighbor.node_id)
                         content = neighbor.properties.get("content", "")
 
                         # Enrich Metadata
                         # Copy properties to avoid modifying cached/original object
                         metadata = neighbor.properties.copy()
-                        metadata["connected_adverse_events"] = adverse_events
+                        # Sort for deterministic output
+                        metadata["connected_adverse_events"] = sorted(list(adverse_events_set))
 
                         hits.append(
                             Hit(
