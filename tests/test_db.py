@@ -53,6 +53,12 @@ class TestLanceDBManager:
         manager5 = get_db_manager()
         assert manager5 is manager4
 
+    def test_default_initialization(self, tmp_path: Path) -> None:
+        """Test default initialization without arguments (dead code coverage)."""
+        reset_db_manager()
+        manager = get_db_manager()
+        assert manager.uri == "/tmp/lancedb"
+
     def test_table_creation(self, tmp_path: Path) -> None:
         """Test that get_table creates the table if it doesn't exist."""
         uri = str(tmp_path / "lancedb_test")

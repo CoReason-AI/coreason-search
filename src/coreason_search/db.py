@@ -99,15 +99,11 @@ def get_db_manager(uri: Optional[str] = None) -> LanceDBManager:
     global _DB_MANAGER
 
     if uri is not None:
-        # Initialize or re-initialize with specific URI
-        if _DB_MANAGER is None:
-            _DB_MANAGER = LanceDBManager(uri)
-        elif _DB_MANAGER.uri != uri:
+        if _DB_MANAGER is None or _DB_MANAGER.uri != uri:
             _DB_MANAGER = LanceDBManager(uri)
         return _DB_MANAGER
 
     if _DB_MANAGER is None:
-        # Initialize default
         _DB_MANAGER = LanceDBManager()
 
     return _DB_MANAGER
