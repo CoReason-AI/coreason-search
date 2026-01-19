@@ -77,10 +77,38 @@ class MockEmbedder(BaseEmbedder):
 def get_embedder(config: Optional[EmbeddingConfig] = None) -> BaseEmbedder:
     """
     Singleton factory for the Embedder.
+    Selects implementation based on config.provider.
     """
     if config is None:
         config = EmbeddingConfig()
-    return MockEmbedder(config)
+
+    from coreason_search.utils.logger import logger
+
+    # Explicit Mock
+    if config.provider == "mock":
+        return MockEmbedder(config)
+
+    # Explicit HF
+    if config.provider == "hf":
+        from coreason_search.embedders.hf import HuggingFaceEmbedder
+
+        return HuggingFaceEmbedder(config)
+
+    # Auto: Try HF, fall back to Mock
+    if config.provider == "auto":
+        try:
+            from coreason_search.embedders.hf import HuggingFaceEmbedder
+
+            return HuggingFaceEmbedder(config)
+        except ImportError:
+            logger.warning("Could not load HuggingFaceEmbedder (missing dependencies). Falling back to MockEmbedder.")
+            return MockEmbedder(config)
+        except Exception as e:  # pragma: no cover
+            logger.error(f"Failed to initialize HuggingFaceEmbedder: {e}. Falling back to MockEmbedder.")
+            return MockEmbedder(config)
+
+    # Default fallback
+    return MockEmbedder(config)  # pragma: no cover
 
 
 def reset_embedder() -> None:

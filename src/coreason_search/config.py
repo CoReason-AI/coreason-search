@@ -26,6 +26,7 @@ from coreason_search.utils.logger import logger
 class EmbeddingConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
+    provider: str = Field(default="auto", description="Embedder provider: 'auto', 'hf', 'mock'")
     model_name: str = "Alibaba-NLP/gte-Qwen2-7B-instruct"
     context_length: int = Field(default=32768, gt=0)
     batch_size: int = Field(default=1, gt=0)
