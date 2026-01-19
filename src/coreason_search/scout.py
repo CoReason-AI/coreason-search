@@ -101,19 +101,18 @@ class MockScout(BaseScout):
     def _score_unit(self, unit: str, query_terms: set[str]) -> float:
         """
         Score a unit based on presence of query terms.
-        Returns 1.0 if any query term is present, 0.0 otherwise.
+        Returns 1.0 if any query term is present as a substring, 0.0 otherwise.
         """
-        # Simple tokenization of unit
-        # Remove punctuation for matching
-        unit_clean = re.sub(r"[^\w\s]", "", unit).lower()
-        unit_terms = set(unit_clean.split())
+        # Simple normalization
+        unit_clean = unit.lower()
 
-        # Check intersection
         if not query_terms:
             return 0.0
 
-        if query_terms & unit_terms:
-            return 1.0
+        # Substring matching
+        for term in query_terms:
+            if term in unit_clean:
+                return 1.0
         return 0.0
 
 

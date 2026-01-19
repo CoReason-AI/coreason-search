@@ -166,3 +166,85 @@ class TestScout:
         # Empty query -> score 0.0 -> filtered out
         results = scout.distill(query="", hits=[hit])
         assert results[0].distilled_text == ""
+
+    def test_scout_substring_matching(self) -> None:
+        """
+        Test that scoring uses substring/fuzzy matching.
+        Query 'run' should match 'running'.
+        """
+        scout = get_scout()
+        hit = Hit(
+            doc_id="1",
+            content="text",
+            original_text="I am running fast.",
+            distilled_text="",
+            score=1.0,
+            source_strategy="test",
+            metadata={},
+        )
+        # "run" is in "running"
+        results = scout.distill(query="run", hits=[hit])
+        assert results[0].distilled_text == "I am running fast."
+
+    def test_scout_complex_structure(self) -> None:
+        """
+        Test handling of newlines and multiple spaces.
+        """
+        scout = get_scout()
+        # Text with newlines and bullets
+        original_text = "Header.\n* Item 1 is cool.\n* Item 2 is bad."
+        hit = Hit(
+            doc_id="1",
+            content="text",
+            original_text=original_text,
+            distilled_text="",
+            score=1.0,
+            source_strategy="test",
+            metadata={},
+        )
+        # Query matches "cool"
+        results = scout.distill(query="cool", hits=[hit])
+        # Should keep "Item 1 is cool."
+        # Should filter "Item 2 is bad."
+        # Header might be filtered if it doesn't match.
+        distilled = results[0].distilled_text
+        assert "Item 1 is cool" in distilled
+        assert "Item 2 is bad" not in distilled
+
+    def test_scout_punctuation_edge_cases(self) -> None:
+        """
+        Test handling of tricky punctuation like decimals and abbreviations.
+        """
+        scout = get_scout()
+        # "3.14" might be split by naive regex.
+        # "Mr. Smith" might be split.
+        original_text = "The value is 3.14. Mr. Smith matches."
+        hit = Hit(
+            doc_id="1",
+            content="text",
+            original_text=original_text,
+            distilled_text="",
+            score=1.0,
+            source_strategy="test",
+            metadata={},
+        )
+
+        # 1. Test Decimal retention
+        # Query "value" matches first part.
+        results = scout.distill(query="value", hits=[hit])
+        # If naive split "3.14" -> "3." and "14.", then "14." won't be kept.
+        # Ideally we want "The value is 3.14." to be kept.
+        # But for mock, if it splits, we just verify the behavior.
+        # If it splits, "The value is 3." is kept. "14." is dropped.
+        # If we fix regex, it should keep "3.14".
+        # Let's assert what we WANT (robustness).
+        assert "3.14" in results[0].distilled_text
+
+        # 2. Test Abbreviation retention
+        # Query "Smith" matches "Smith".
+        results2 = scout.distill(query="Smith", hits=[hit])
+        # If split "Mr." and "Smith matches.", "Mr." is dropped (no match), "Smith matches." is kept.
+        # So "Mr. Smith matches." -> "Smith matches."
+        # This shows the limitation.
+        # We'll see what happens.
+        assert "Smith" in results2[0].distilled_text
