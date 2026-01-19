@@ -10,8 +10,11 @@
 
 import hashlib
 import time
-from typing import Iterator, List
+from typing import Iterator, List, Optional, Union
 
+from coreason_search.config import Settings, load_config
+from coreason_search.db import get_db_manager
+from coreason_search.embedder import get_embedder
 from coreason_search.fusion import FusionEngine
 from coreason_search.reranker import get_reranker
 from coreason_search.retrievers.dense import DenseRetriever
@@ -29,15 +32,46 @@ class SearchEngine:
     Orchestrates Embedder, Retrievers, Fusion, Reranker, and Scout.
     """
 
-    def __init__(self) -> None:
-        # Initialize components
-        # In a real app, these might be lazy loaded or injected
+    def __init__(self, config: Optional[Union[Settings, str]] = None) -> None:
+        """
+        Initialize the Search Engine.
+
+        Args:
+            config: A Settings object or path to a config file.
+        """
+        if isinstance(config, str):
+            self.config = load_config(config)
+        elif isinstance(config, Settings):
+            self.config = config
+        else:
+            self.config = load_config()
+
+        # Initialize global Singletons with config
+        # Note: If singletons were already initialized with defaults, this might not override them
+        # unless we explicitly reset or if the factories handle update.
+        # Factories like get_db_manager(uri) DO update if uri changes.
+        # Factories like get_embedder(config) use lru_cache, so different config = new instance.
+        self.db_manager = get_db_manager(self.config.database_uri)
+
+        # Initialize local components (Retrievers need access to the configured components)
+        # Note: Retrievers currently call get_db_manager() etc inside their __init__.
+        # So we must ensure the Singletons are initialized/configured BEFORE retrievers are instantiated.
+        # Which is what we did above for DB.
+        # For Embedder, DenseRetriever calls get_embedder(). It gets default if not passed.
+        # We need to ensure DenseRetriever uses the configured embedder.
+        # Currently DenseRetriever doesn't accept embedder injection, it calls get_embedder() in __init__.
+        # To fix this properly, we should pre-initialize the embedder singleton.
+        self.embedder = get_embedder(self.config.embedding)
+
+        # Initialize Retrievers
         self.dense_retriever = DenseRetriever()
         self.sparse_retriever = SparseRetriever()
         self.graph_retriever = GraphRetriever()
         self.fusion_engine = FusionEngine()
-        self.reranker = get_reranker()
-        self.scout = get_scout()
+
+        # Initialize Reranker and Scout with Config
+        self.reranker = get_reranker(self.config.reranker)
+        self.scout = get_scout(self.config.scout)
         self.veritas = get_veritas_client()
 
     def execute(self, request: SearchRequest) -> SearchResponse:

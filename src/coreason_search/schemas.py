@@ -11,21 +11,13 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class RetrieverType(str, Enum):
     LANCE_DENSE = "lance_dense"
     LANCE_FTS = "lance_fts"
     GRAPH_NEIGHBOR = "graph_neighbor"
-
-
-class EmbeddingConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)  # Enable hashing for lru_cache
-
-    model_name: str = "Alibaba-NLP/gte-Qwen2-7B-instruct"
-    context_length: int = Field(default=32768, gt=0)
-    batch_size: int = Field(default=1, gt=0)
 
 
 class SearchRequest(BaseModel):
