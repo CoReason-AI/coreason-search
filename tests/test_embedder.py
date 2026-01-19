@@ -14,7 +14,8 @@ import numpy as np
 import pytest
 
 from coreason_search.config import EmbeddingConfig
-from coreason_search.embedder import MockEmbedder, get_embedder, reset_embedder
+from coreason_search.embedder import get_embedder, reset_embedder
+from coreason_search.embedders.mock import MockEmbedder
 
 
 class TestEmbedder:
