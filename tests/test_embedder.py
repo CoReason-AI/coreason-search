@@ -25,7 +25,7 @@ class TestEmbedder:
         reset_embedder()
 
     def test_singleton_behavior(self) -> None:
-        """Test that get_embedder returns the same instance."""
+        """Test that get_embedder returns the same instance for same config."""
         embedder1 = get_embedder()
         embedder2 = get_embedder()
         assert embedder1 is embedder2
@@ -68,8 +68,8 @@ class TestEmbedder:
         assert isinstance(embedder, MockEmbedder)
         assert embedder.config.model_name == "test-model"
 
-    def test_reinitialization_ignores_config(self) -> None:
-        """Test that subsequent calls to get_embedder ignore config if already initialized."""
+    def test_lru_cache_distinct_configs(self) -> None:
+        """Test that different configs yield different instances (lru_cache behavior)."""
         config1 = EmbeddingConfig(model_name="model1")
         embedder1 = get_embedder(config1)
         assert isinstance(embedder1, MockEmbedder)  # mypy check
@@ -77,10 +77,15 @@ class TestEmbedder:
 
         config2 = EmbeddingConfig(model_name="model2")
         embedder2 = get_embedder(config2)
-        assert embedder2 is embedder1
-        # The config should still be the original one
+
+        # With lru_cache, different arguments -> new result
+        assert embedder2 is not embedder1
         assert isinstance(embedder2, MockEmbedder)
-        assert embedder2.config.model_name == "model1"
+        assert embedder2.config.model_name == "model2"
+
+        # Verify idempotency for same config
+        embedder1_again = get_embedder(config1)
+        assert embedder1_again is embedder1
 
     def test_embed_large_batch(self) -> None:
         """Test embedding a large batch of strings."""

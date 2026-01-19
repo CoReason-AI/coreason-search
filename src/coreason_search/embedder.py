@@ -9,6 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import List, Optional, Union
 
 import numpy as np
@@ -72,22 +73,16 @@ class MockEmbedder(BaseEmbedder):
         return embeddings
 
 
-_embedder_instance: Optional[BaseEmbedder] = None
-
-
+@lru_cache(maxsize=32)
 def get_embedder(config: Optional[EmbeddingConfig] = None) -> BaseEmbedder:
     """
     Singleton factory for the Embedder.
     """
-    global _embedder_instance
-    if _embedder_instance is None:
-        if config is None:
-            config = EmbeddingConfig()
-        _embedder_instance = MockEmbedder(config)
-    return _embedder_instance
+    if config is None:
+        config = EmbeddingConfig()
+    return MockEmbedder(config)
 
 
 def reset_embedder() -> None:
-    """Reset the singleton instance (useful for testing)."""
-    global _embedder_instance
-    _embedder_instance = None
+    """Reset the singleton instance (clear cache)."""
+    get_embedder.cache_clear()
