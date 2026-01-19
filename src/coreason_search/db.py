@@ -9,6 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
+from functools import lru_cache
 from typing import Optional
 
 import lancedb
@@ -56,25 +57,15 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
 
 class LanceDBManager:
     """
-    Singleton manager for LanceDB connection and table access.
+    Manager for LanceDB connection and table access.
     """
-
-    _instance: Optional["LanceDBManager"] = None
-
-    def __new__(cls, *args: object, **kwargs: object) -> "LanceDBManager":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
 
     def __init__(self, uri: str = "/tmp/lancedb"):
         """
         Initialize the connection.
-        If already initialized, this serves as a re-configuration/reset if needed,
-        but typically we check if self.db exists.
         """
-        if not hasattr(self, "db") or self.db is None:
-            self.uri = uri
-            self.connect(uri)
+        self.uri = uri
+        self.connect(uri)
 
     def connect(self, uri: str) -> None:
         """Connect to the LanceDB instance."""
@@ -101,12 +92,16 @@ class LanceDBManager:
         # If not, create with current schema
         return self.db.create_table(name, schema=DocumentSchema)
 
-    def reset(self) -> None:
-        """Reset the singleton (useful for tests)."""
-        self.db = None
-        LanceDBManager._instance = None
 
-
+@lru_cache(maxsize=1)
 def get_db_manager(uri: str = "/tmp/lancedb") -> LanceDBManager:
-    """Factory function to get the DB manager."""
+    """
+    Factory function to get the DB manager.
+    Uses lru_cache to implement Singleton pattern with parameter support.
+    """
     return LanceDBManager(uri)
+
+
+def reset_db_manager() -> None:
+    """Reset the singleton (useful for tests)."""
+    get_db_manager.cache_clear()

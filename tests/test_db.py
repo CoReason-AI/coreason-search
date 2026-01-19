@@ -16,19 +16,17 @@ import numpy as np
 import pytest
 from lancedb.table import Table
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
+from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 
 
 class TestLanceDBManager:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: Path) -> Generator[None, None, None]:
         # Reset singleton before each test
-        manager = get_db_manager(str(tmp_path))
-        manager.reset()
+        reset_db_manager()
         yield
         # Reset after test
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
+        reset_db_manager()
 
     def test_singleton_behavior(self, tmp_path: Path) -> None:
         """Test that get_db_manager returns the same instance."""
@@ -138,7 +136,7 @@ class TestLanceDBManager:
         table.add([doc])
 
         # Reset and reconnect
-        manager.reset()
+        reset_db_manager()
         new_manager = get_db_manager(uri)
         new_table = new_manager.get_table()
 
