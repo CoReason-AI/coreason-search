@@ -224,9 +224,7 @@ class TestGraphTraversalEdgeCases:
         assert isinstance(client, MockGraphClient)
         self._clear_graph(client)
 
-        client.nodes["nausea"] = GraphNode(
-            node_id="nausea", label="AdverseEvent", name="Nausea"
-        )
+        client.nodes["nausea"] = GraphNode(node_id="nausea", label="AdverseEvent", name="Nausea")
         client.nodes["paper_cyc"] = GraphNode(
             node_id="paper_cyc", label="Paper", name="Paper Cyclic", properties={"content": "C"}
         )
