@@ -43,6 +43,8 @@ class TestGraphTraversalEdgeCases:
         # Should find Paper A
         assert len(hits) == 1
         assert hits[0].doc_id == "paper_a"
+        # Since logic checks if paper connects to AE, and Paper A connects to Liver Failure (the query node),
+        # it works.
 
     def test_multiple_adverse_events(self) -> None:
         """
@@ -74,6 +76,44 @@ class TestGraphTraversalEdgeCases:
 
         assert len(hits) == 1
         assert hits[0].doc_id == "paper_m"
+
+        # New assertion: Check metadata contains both AEs
+        aes = hits[0].metadata["connected_adverse_events"]
+        assert "AE 1" in aes
+        assert "AE 2" in aes
+        assert len(aes) == 2
+
+    def test_duplicate_adverse_events(self) -> None:
+        """
+        Test a Paper connected to Adverse Events with duplicate names/nodes.
+        Metadata should deduplicate.
+        """
+        retriever = GraphRetriever()
+        client = retriever.client
+        assert isinstance(client, MockGraphClient)
+        self._clear_graph(client)
+
+        client.nodes["paper_d"] = GraphNode(
+            node_id="paper_d", label="Paper", name="Dup Paper", properties={"content": "D"}
+        )
+        client.nodes["start_d"] = GraphNode(node_id="start_d", label="Protein", name="Start D")
+
+        # AE 1 and AE 1_dup (same name)
+        client.nodes["ae_1"] = GraphNode(node_id="ae_1", label="AdverseEvent", name="Nausea")
+        client.nodes["ae_1_dup"] = GraphNode(node_id="ae_1_dup", label="AdverseEvent", name="Nausea")
+
+        client.edges.append({"source": "start_d", "target": "paper_d"})
+        client.edges.append({"source": "paper_d", "target": "ae_1"})
+        client.edges.append({"source": "paper_d", "target": "ae_1_dup"})
+
+        request = SearchRequest(query="Start D", strategies=[RetrieverType.GRAPH_NEIGHBOR])
+        hits = retriever.retrieve(request)
+
+        assert len(hits) == 1
+        aes = hits[0].metadata["connected_adverse_events"]
+        # Should be deduplicated by name
+        assert len(aes) == 1
+        assert aes[0] == "Nausea"
 
     def test_mixed_neighbors(self) -> None:
         """
@@ -170,3 +210,33 @@ class TestGraphTraversalEdgeCases:
 
         # Expect 0.
         assert len(hits) == 0
+
+    def test_cyclic_adverse_event(self) -> None:
+        """
+        Test case where Query is an AE, connects to Paper, which connects back to the same AE.
+        Query "Nausea" -> matches Node "Nausea" (AE).
+        Nausea -> Paper A.
+        Paper A -> Nausea.
+        Should return Paper A with "Nausea" in metadata.
+        """
+        retriever = GraphRetriever()
+        client = retriever.client
+        assert isinstance(client, MockGraphClient)
+        self._clear_graph(client)
+
+        client.nodes["nausea"] = GraphNode(node_id="nausea", label="AdverseEvent", name="Nausea")
+        client.nodes["paper_cyc"] = GraphNode(
+            node_id="paper_cyc", label="Paper", name="Paper Cyclic", properties={"content": "C"}
+        )
+
+        # Edge from Nausea to Paper (Paper discusses Nausea)
+        client.edges.append({"source": "nausea", "target": "paper_cyc"})
+        # Edge from Paper to Nausea (Paper identifies Nausea as AE)
+        client.edges.append({"source": "paper_cyc", "target": "nausea"})
+
+        request = SearchRequest(query="Nausea", strategies=[RetrieverType.GRAPH_NEIGHBOR])
+        hits = retriever.retrieve(request)
+
+        assert len(hits) == 1
+        assert hits[0].doc_id == "paper_cyc"
+        assert "Nausea" in hits[0].metadata["connected_adverse_events"]
