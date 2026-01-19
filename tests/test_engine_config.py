@@ -7,7 +7,8 @@ import yaml
 
 from coreason_search.config import EmbeddingConfig, ScoutConfig, Settings
 from coreason_search.db import get_db_manager, reset_db_manager
-from coreason_search.embedder import MockEmbedder, reset_embedder
+from coreason_search.embedder import reset_embedder
+from coreason_search.embedders.mock import MockEmbedder
 from coreason_search.engine import SearchEngine
 from coreason_search.reranker import reset_reranker
 from coreason_search.scout import MockScout, reset_scout

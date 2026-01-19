@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 import numpy as np
 
 from coreason_search.config import EmbeddingConfig
-from coreason_search.embedder import BaseEmbedder
+from coreason_search.interfaces import BaseEmbedder
 from coreason_search.utils.logger import logger
 
 if TYPE_CHECKING:
