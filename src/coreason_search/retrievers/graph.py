@@ -59,11 +59,18 @@ class GraphRetriever(BaseRetriever):
                     # 3. Validation: Does this paper connect to an AdverseEvent?
                     # Perform 2nd hop
                     paper_neighbors = self.client.get_neighbors(neighbor.node_id)
-                    has_adverse_event = any(n.label == "AdverseEvent" for n in paper_neighbors)
 
-                    if has_adverse_event:
+                    # Identify Adverse Events
+                    adverse_events = [n.name for n in paper_neighbors if n.label == "AdverseEvent"]
+
+                    if adverse_events:
                         seen_ids.add(neighbor.node_id)
                         content = neighbor.properties.get("content", "")
+
+                        # Enrich Metadata
+                        # Copy properties to avoid modifying cached/original object
+                        metadata = neighbor.properties.copy()
+                        metadata["connected_adverse_events"] = adverse_events
 
                         hits.append(
                             Hit(
@@ -73,7 +80,7 @@ class GraphRetriever(BaseRetriever):
                                 distilled_text="",
                                 score=1.0,
                                 source_strategy=RetrieverType.GRAPH_NEIGHBOR.value,
-                                metadata=neighbor.properties,
+                                metadata=metadata,
                             )
                         )
 

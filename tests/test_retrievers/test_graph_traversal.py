@@ -44,10 +44,16 @@ class TestGraphTraversal2Hop:
         hits = retriever.retrieve(request)
 
         # Assertion: Should only return 1 hit (Paper A)
-        # Current implementation returns 2 (Paper A and Paper B)
         assert len(hits) == 1
         assert hits[0].doc_id == "paper_a"
         assert "liver failure" in hits[0].content
+
+        # Metadata Enrichment Check
+        # Expect 'connected_adverse_events' to be a list containing "Liver Failure"
+        assert "connected_adverse_events" in hits[0].metadata
+        ae_list = hits[0].metadata["connected_adverse_events"]
+        assert isinstance(ae_list, list)
+        assert "Liver Failure" in ae_list
 
     def test_paper_with_non_ae_neighbor(self) -> None:
         """
