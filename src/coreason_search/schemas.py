@@ -28,6 +28,33 @@ class EmbeddingConfig(BaseModel):
     batch_size: int = Field(default=1, gt=0)
 
 
+class RerankerConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    model_name: str = "BAAI/bge-reranker-v2-m3"
+
+
+class ScoutConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    model_name: str = "microsoft/llmlingua-2-bert-base-multilingual-cased-meetingbank"
+    threshold: float = Field(default=0.4, ge=0.0, le=1.0)
+
+
+class AppConfig(BaseModel):
+    """
+    Root configuration for the search application.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
+    reranker: RerankerConfig = Field(default_factory=RerankerConfig)
+    scout: ScoutConfig = Field(default_factory=ScoutConfig)
+    database_uri: str = Field(default="/tmp/lancedb")
+    env: str = Field(default="development")
+
+
 class SearchRequest(BaseModel):
     query: Union[str, Dict[str, str]] = Field(..., description="String for RAG, Dict for Boolean")
     strategies: List[RetrieverType] = Field(..., min_length=1, description="List of retrieval strategies to execute")

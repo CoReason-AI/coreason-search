@@ -10,9 +10,9 @@
 
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
-from coreason_search.schemas import Hit
+from coreason_search.schemas import Hit, RerankerConfig
 
 
 class BaseReranker(ABC):
@@ -38,6 +38,9 @@ class MockReranker(BaseReranker):
     """
     Mock Re-Ranker that simulates Cross-Encoder behavior.
     """
+
+    def __init__(self, config: Optional[RerankerConfig] = None):
+        self.config = config or RerankerConfig()
 
     def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
         """
@@ -78,9 +81,9 @@ class MockReranker(BaseReranker):
 
 
 @lru_cache(maxsize=32)
-def get_reranker() -> BaseReranker:
+def get_reranker(config: Optional[RerankerConfig] = None) -> BaseReranker:
     """Singleton factory for Reranker."""
-    return MockReranker()
+    return MockReranker(config)
 
 
 def reset_reranker() -> None:

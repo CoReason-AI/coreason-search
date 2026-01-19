@@ -11,9 +11,9 @@
 import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
-from coreason_search.schemas import Hit
+from coreason_search.schemas import Hit, ScoutConfig
 from coreason_search.utils.common import extract_query_text
 
 # Pre-compiled regex for sentence splitting
@@ -48,8 +48,8 @@ class MockScout(BaseScout):
     using deterministic heuristics for testing.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        self.config = config or {}
+    def __init__(self, config: Optional[ScoutConfig] = None):
+        self.config = config or ScoutConfig()
 
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
         """
@@ -80,7 +80,8 @@ class MockScout(BaseScout):
             relevant_segments = []
             for seg in segments:
                 score = self._score_unit(seg, query_terms)
-                if score > 0.5:  # Threshold
+                # Use threshold from config
+                if score > self.config.threshold:
                     relevant_segments.append(seg)
 
             # Reconstruct
@@ -119,51 +120,15 @@ class MockScout(BaseScout):
 
 
 @lru_cache(maxsize=32)
-def get_scout(config: Optional[Dict[str, Any]] = None) -> BaseScout:
+def get_scout(config: Optional[ScoutConfig] = None) -> BaseScout:
     """
     Singleton factory for Scout.
-    Accepts config to allow future configuration of the Scout model.
     """
-    # Note: lru_cache will cache based on the config dict.
-    # If config is None, it caches the default.
-    # If config is mutable (dict), it might fail lru_cache hashing if not handled.
-    # However, Python dicts are not hashable.
-    # If we want to use lru_cache with dict, we can't directly.
-    # We should probably use a Pydantic model for config (like EmbeddingConfig) if we want caching.
-    # For now, since MockScout is lightweight and config is unused/optional,
-    # we can remove lru_cache OR require config to be hashable (frozendict).
-    #
-    # Given the previous pattern `get_embedder(config: EmbeddingConfig)`, that worked because EmbeddingConfig is frozen.
-    # Since there is no `ScoutConfig` yet, and I shouldn't over-engineer,
-    # I will modify `get_scout` to NOT use `lru_cache` on the argument if it's a dict,
-    # OR better: I will create a simple internal singleton management manually
-    # to avoid the "dict is not hashable" error with lru_cache.
-    #
-    # Actually, the user asked for standard deps. `lru_cache` is standard.
-    # I'll just remove `lru_cache` for now and return the instance,
-    # or implement a manual singleton check.
-    #
-    # But wait, `EmbeddingConfig` exists. I should probably create `ScoutConfig`?
-    # No, that's expanding scope.
-    #
-    # I will just use a global variable or memoization helper.
-    # Or, just assume config is passed once.
-    #
-    # Let's use the simplest valid python: Manual singleton.
-    return _get_scout_instance(config)
-
-
-_SCOUT_INSTANCE: Optional[BaseScout] = None
-
-
-def _get_scout_instance(config: Optional[Dict[str, Any]] = None) -> BaseScout:
-    global _SCOUT_INSTANCE
-    if _SCOUT_INSTANCE is None:
-        _SCOUT_INSTANCE = MockScout(config)
-    return _SCOUT_INSTANCE
+    if config is None:
+        config = ScoutConfig()
+    return MockScout(config)
 
 
 def reset_scout() -> None:
     """Reset singleton."""
-    global _SCOUT_INSTANCE
-    _SCOUT_INSTANCE = None
+    get_scout.cache_clear()

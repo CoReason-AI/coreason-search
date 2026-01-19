@@ -17,19 +17,24 @@ import pytest
 from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 from coreason_search.embedder import get_embedder, reset_embedder
 from coreason_search.engine import SearchEngine
-from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import AppConfig, Hit, RetrieverType, SearchRequest, SearchResponse
 
 
 class TestSearchEngine:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
-        db_path = str(tmp_path) + "/lancedb_engine"
+        self.db_path = str(tmp_path) + "/lancedb_engine"
         reset_db_manager()
-        get_db_manager(db_path)
+        get_db_manager(self.db_path)
         reset_embedder()
         yield
         reset_db_manager()
         reset_embedder()
+
+    def _get_engine(self) -> SearchEngine:
+        """Helper to initialize engine with the correct DB URI."""
+        config = AppConfig(database_uri=self.db_path)
+        return SearchEngine(config)
 
     def _seed_db(self) -> None:
         manager = get_db_manager()
@@ -59,7 +64,7 @@ class TestSearchEngine:
     def test_execute_standard_flow(self) -> None:
         """Test standard RAG execution flow."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         request = SearchRequest(
             query="apple",
@@ -95,7 +100,7 @@ class TestSearchEngine:
     def test_execute_systematic_flow(self) -> None:
         """Test systematic search generator."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         request = SearchRequest(
             query="apple",
@@ -112,7 +117,7 @@ class TestSearchEngine:
     def test_execute_systematic_audit(self) -> None:
         """Test systematic search execution with audit logging."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         req = SearchRequest(
             query="test",
@@ -159,7 +164,7 @@ class TestSearchEngine:
     def test_execute_systematic_audit_exception(self) -> None:
         """Test systematic search audit fallback when DB version fails."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
         req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_FTS])
 
         engine.sparse_retriever = MagicMock()
@@ -177,7 +182,7 @@ class TestSearchEngine:
     def test_unknown_strategy_and_error_handling(self) -> None:
         """Test that unknown strategies are handled gracefully."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         # Mixed valid and invalid (Graph IS implemented now, but we can verify it doesn't crash)
         # Let's use a query that Graph mock recognizes ("Protein X") to verify Graph works mixed with Dense.
@@ -202,7 +207,7 @@ class TestSearchEngine:
     def test_fusion_disabled(self) -> None:
         """Test execution with fusion disabled."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         request = SearchRequest(
             query="apple",
@@ -217,7 +222,7 @@ class TestSearchEngine:
     def test_rerank_distill_disabled(self) -> None:
         """Test disabling rerank and distill."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         request = SearchRequest(
             query="apple", strategies=[RetrieverType.LANCE_DENSE], rerank_enabled=False, distill_enabled=False
@@ -231,7 +236,7 @@ class TestSearchEngine:
     def test_systematic_dense_warning(self) -> None:
         """Test systematic search with dense strategy (should work but fallback)."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
         request = SearchRequest(
             query="apple",
             strategies=[RetrieverType.LANCE_DENSE],
@@ -243,7 +248,7 @@ class TestSearchEngine:
     def test_strategy_exception_handling(self) -> None:
         """Test that exceptions in strategies are caught and logged."""
         self._seed_db()
-        engine = SearchEngine()
+        engine = self._get_engine()
 
         # Mock dense retriever to raise exception
         class BrokenRetriever:
