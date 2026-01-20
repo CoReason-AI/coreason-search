@@ -19,25 +19,28 @@ from coreason_search.utils.query_parser import parse_pubmed_query
 
 
 class SparseRetriever(BaseRetriever):
-    """
-    Sparse/Boolean Retriever strategy using LanceDB FTS (Tantivy).
+    """Sparse/Boolean Retriever strategy using LanceDB FTS (Tantivy).
+
     Supports Systematic Review mode with generators.
     """
 
     def __init__(self) -> None:
+        """Initialize the Sparse Retriever."""
         self.db_manager = get_db_manager()
         self.table = self.db_manager.get_table()
         self.systematic_batch_size = 1000
 
     def retrieve(self, request: SearchRequest) -> List[Hit]:
-        """
-        Execute sparse/boolean retrieval.
+        """Execute sparse/boolean retrieval.
 
         Args:
             request: The search request.
 
         Returns:
             List[Hit]: Top k hits.
+
+        Raises:
+            Exception: If FTS index is missing or query fails.
         """
         query_str = self._prepare_query(request.query)
 
@@ -74,17 +77,26 @@ class SparseRetriever(BaseRetriever):
         return hits[: request.top_k]
 
     def get_table_version(self) -> int:
-        """
-        Get the current version of the LanceDB table.
+        """Get the current version of the LanceDB table.
+
         Used for audit snapshots.
+
+        Returns:
+            int: The version number.
         """
         return int(self.table.version)
 
     def retrieve_systematic(self, request: SearchRequest) -> Iterator[Hit]:
-        """
-        Systematic Search Mode.
+        """Systematic Search Mode.
+
         Returns a generator yielding ALL results matching the boolean query.
         Uses offset-based pagination loop for true streaming without loading everything into RAM.
+
+        Args:
+            request: The search request.
+
+        Yields:
+            Hit: Hits one by one.
         """
         query_str = self._prepare_query(request.query)
 
@@ -115,7 +127,14 @@ class SparseRetriever(BaseRetriever):
             offset += batch_size
 
     def _prepare_query(self, query: Union[str, Dict[str, Any]]) -> str:
-        """Helper to prepare query string."""
+        """Helper to prepare query string.
+
+        Args:
+            query: The query string or dictionary.
+
+        Returns:
+            str: The formatted query string.
+        """
         if isinstance(query, dict):
             # If it's a dict, we might need to convert to Tantivy syntax.
             # e.g. {"Title": "Aspirin"} -> "Title:Aspirin"
@@ -128,11 +147,25 @@ class SparseRetriever(BaseRetriever):
         return parse_pubmed_query(str(query))
 
     def _map_results(self, results_list: List[Dict[str, Any]]) -> List[Hit]:
-        """Map generic list of dicts to Hits."""
+        """Map generic list of dicts to Hits.
+
+        Args:
+            results_list: List of result dictionaries.
+
+        Returns:
+            List[Hit]: List of mapped hits.
+        """
         return [self._map_single_result(item) for item in results_list]
 
     def _map_single_result(self, item: Dict[str, Any]) -> Hit:
-        """Map a single dict to a Hit."""
+        """Map a single dict to a Hit.
+
+        Args:
+            item: The result dictionary.
+
+        Returns:
+            Hit: The mapped hit.
+        """
         # _score is returned by Tantivy
         score = item.get("_score", 0.0)
         return LanceMapper.map_hit(item, RetrieverType.LANCE_FTS.value, score)

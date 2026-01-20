@@ -19,13 +19,12 @@ class LanceMapper:
 
     @staticmethod
     def map_hit(item: Dict[str, Any], source_strategy: str, score: float = 0.0) -> Hit:
-        """
-        Map a single LanceDB result item to a Hit object.
+        """Map a single LanceDB result item to a Hit object.
 
         Args:
             item: The dictionary returned by LanceDB.
             source_strategy: The retriever strategy name.
-            score: The relevance score.
+            score: The relevance score. Defaults to 0.0.
 
         Returns:
             Hit: The populated Hit object.

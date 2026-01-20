@@ -21,8 +21,7 @@ class BaseReranker(ABC):
 
     @abstractmethod
     def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
-        """
-        Re-rank the hits using a cross-encoder or other logic.
+        """Re-rank the hits using a cross-encoder or other logic.
 
         Args:
             query: The user query.
@@ -36,16 +35,20 @@ class BaseReranker(ABC):
 
 
 class MockReranker(BaseReranker):
-    """
-    Mock Re-Ranker that simulates Cross-Encoder behavior.
-    """
+    """Mock Re-Ranker that simulates Cross-Encoder behavior."""
 
     def __init__(self, config: Optional[RerankerConfig] = None):
+        """Initialize the Mock Reranker.
+
+        Args:
+            config: Configuration for the reranker.
+        """
         self.config = config or RerankerConfig()
 
     def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
-        """
-        Mock re-ranking.
+        """Mock re-ranking.
+
+        Simulates re-ranking by scoring based on content length (longer is better for mock).
 
         Args:
             query: The user query.
@@ -83,9 +86,17 @@ class MockReranker(BaseReranker):
 
 @lru_cache(maxsize=32)
 def get_reranker(config: Optional[RerankerConfig] = None) -> BaseReranker:
-    """Singleton factory for Reranker."""
+    """Singleton factory for Reranker.
+
+    Args:
+        config: Configuration for the reranker.
+
+    Returns:
+        BaseReranker: An instance of the reranker.
+    """
     return MockReranker(config)
 
 
 def reset_reranker() -> None:
+    """Reset the singleton (clear cache)."""
     get_reranker.cache_clear()

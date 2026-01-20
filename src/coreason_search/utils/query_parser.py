@@ -40,8 +40,7 @@ def _map_tags_to_fields(tags: List[str]) -> List[str]:
 
 
 def parse_pubmed_query(query: str) -> str:
-    """
-    Translates a PubMed-style Boolean query into a Tantivy-compatible query string.
+    """Translate a PubMed-style Boolean query into a Tantivy-compatible query string.
 
     Examples:
         "Aspirin"[Title] -> title:"Aspirin"
