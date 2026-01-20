@@ -2,9 +2,10 @@
 
 The Unified Retrieval Execution Engine for the CoReason ecosystem.
 
-[![License](https://img.shields.io/badge/License-Prosperity%203.0-blue)](https://github.com/CoReason-AI/coreason_search/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/license-Prosperity%203.0-blue)](https://github.com/CoReason-AI/coreason_search/blob/main/LICENSE)
 [![CI](https://github.com/CoReason-AI/coreason_search/actions/workflows/ci.yml/badge.svg)](https://github.com/CoReason-AI/coreason_search/actions/workflows/ci.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Docs](https://img.shields.io/badge/docs-product_requirements-green)](docs/product_requirements.md)
 
 **coreason-search** serves as the "Librarian" of the CoReason architecture, designed to solve three distinct problems: Ad-Hoc Reasoning (RAG), Systematic Evidence Synthesis, and Context Distillation. It adopts a "Late Chunking / No Chunking" philosophy, utilizing SOTA 32k context embeddings to process full documents.
 
