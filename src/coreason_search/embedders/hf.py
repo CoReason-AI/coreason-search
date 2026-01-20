@@ -21,15 +21,21 @@ if TYPE_CHECKING:
 
 
 class HuggingFaceEmbedder(BaseEmbedder):
-    """
-    Embedder implementation using Sentence Transformers or HuggingFace models.
+    """Embedder implementation using Sentence Transformers or HuggingFace models.
+
     Supports local sovereign execution.
     """
 
     def __init__(self, config: EmbeddingConfig):
-        """
-        Initialize the HuggingFace Embedder.
+        """Initialize the HuggingFace Embedder.
+
         Attempts to import sentence_transformers.
+
+        Args:
+            config: Configuration for the embedder.
+
+        Raises:
+            ImportError: If sentence-transformers is not installed.
         """
         self.config = config
         self._model: Optional["SentenceTransformer"] = None
@@ -59,8 +65,16 @@ class HuggingFaceEmbedder(BaseEmbedder):
             self._model.max_seq_length = config.context_length
 
     def embed(self, text: Union[str, List[str]]) -> np.ndarray:
-        """
-        Embed text using the loaded model.
+        """Embed text using the loaded model.
+
+        Args:
+            text: Single string or list of strings to embed.
+
+        Returns:
+            np.ndarray: Array of shape (n, dim).
+
+        Raises:
+            RuntimeError: If the model is not initialized.
         """
         if self._model is None:
             raise RuntimeError("Model not initialized")  # pragma: no cover

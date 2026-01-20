@@ -12,5 +12,10 @@ from coreason_search.utils.logger import logger
 
 
 def hello_world() -> str:
+    """Returns a hello world message.
+
+    Returns:
+        str: "Hello World!" string.
+    """
     logger.info("Hello World!")
     return "Hello World!"

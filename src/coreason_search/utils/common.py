@@ -12,8 +12,8 @@ from typing import Any, Dict, Union
 
 
 def extract_query_text(query: Union[str, Dict[str, Any]]) -> str:
-    """
-    Extract a string representation of the query for semantic search or logging.
+    """Extract a string representation of the query for semantic search or logging.
+
     If query is a Dict, tries to use 'text' key, otherwise joins all values.
 
     Args:

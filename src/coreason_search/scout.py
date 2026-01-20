@@ -29,8 +29,7 @@ class BaseScout(ABC):
 
     @abstractmethod
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
-        """
-        Distill the content of the hits, removing irrelevant parts.
+        """Distill the content of the hits, removing irrelevant parts.
 
         Args:
             query: The user query.
@@ -43,21 +42,33 @@ class BaseScout(ABC):
 
 
 class MockScout(BaseScout):
-    """
-    Mock implementation of The Scout.
+    """Mock implementation of The Scout.
+
     Implements the Segmentation -> Scoring -> Filtering pipeline
     using deterministic heuristics for testing.
     """
 
     def __init__(self, config: Optional[ScoutConfig] = None):
+        """Initialize the Mock Scout.
+
+        Args:
+            config: Configuration for the scout.
+        """
         self.config = config or ScoutConfig()
 
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
-        """
-        Mock distillation:
+        """Mock distillation.
+
         1. Segment text into sentences.
         2. Score sentences based on keyword overlap with query.
         3. Filter out sentences with score 0.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to process.
+
+        Returns:
+            List[Hit]: The list of hits with distilled content.
         """
         query_text = extract_query_text(query)
         # Normalize query terms once
@@ -96,16 +107,29 @@ class MockScout(BaseScout):
         return distilled_hits
 
     def _segment(self, text: str) -> List[str]:
-        """
-        Split text into logical units (sentences).
+        """Split text into logical units (sentences).
+
         Uses pre-compiled regex.
+
+        Args:
+            text: The text to segment.
+
+        Returns:
+            List[str]: A list of sentence segments.
         """
         return [s.strip() for s in SENTENCE_SPLIT_REGEX.split(text) if s.strip()]
 
     def _score_unit(self, unit: str, query_terms: set[str]) -> float:
-        """
-        Score a unit based on presence of query terms.
+        """Score a unit based on presence of query terms.
+
         Returns 1.0 if any query term is present as a substring, 0.0 otherwise.
+
+        Args:
+            unit: The text unit to score.
+            query_terms: The set of query terms to look for.
+
+        Returns:
+            float: The relevance score (0.0 or 1.0).
         """
         # Simple normalization
         unit_clean = unit.lower()
@@ -122,8 +146,13 @@ class MockScout(BaseScout):
 
 @lru_cache(maxsize=32)
 def get_scout(config: Optional[ScoutConfig] = None) -> BaseScout:
-    """
-    Singleton factory for Scout.
+    """Singleton factory for Scout.
+
+    Args:
+        config: Configuration for the scout.
+
+    Returns:
+        BaseScout: An instance of the scout.
     """
     if config is None:
         config = ScoutConfig()

@@ -12,8 +12,8 @@ from typing import Any, Dict
 
 
 def matches_filters(metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
-    """
-    Check if the metadata matches the MongoDB-style filters.
+    """Check if the metadata matches the MongoDB-style filters.
+
     Supports dot notation for nested fields and logical operators ($or, $and, $not).
 
     Args:
@@ -68,7 +68,15 @@ def matches_filters(metadata: Dict[str, Any], filters: Dict[str, Any]) -> bool:
 
 
 def _get_value_by_path(data: Any, path: str) -> Any:
-    """Retrieve value from nested dict using dot notation."""
+    """Retrieve value from nested dict using dot notation.
+
+    Args:
+        data: The data dictionary.
+        path: The dotted path string.
+
+    Returns:
+        Any: The value found or None.
+    """
     keys = path.split(".")
     curr = data
     for k in keys:
@@ -80,7 +88,15 @@ def _get_value_by_path(data: Any, path: str) -> Any:
 
 
 def _check_condition_operators(value: Any, condition: Dict[str, Any]) -> bool:
-    """Helper to check operators for a single field with type safety."""
+    """Helper to check operators for a single field with type safety.
+
+    Args:
+        value: The value to check.
+        condition: The condition dictionary.
+
+    Returns:
+        bool: True if matches, False otherwise.
+    """
     for op, target in condition.items():
         if not check_single_op(op, value, target):
             return False
@@ -88,7 +104,16 @@ def _check_condition_operators(value: Any, condition: Dict[str, Any]) -> bool:
 
 
 def check_single_op(op: str, value: Any, target: Any) -> bool:
-    """Check a single operator condition."""
+    """Check a single operator condition.
+
+    Args:
+        op: The operator string (e.g., "$eq", "$gt").
+        value: The value to check.
+        target: The target value to compare against.
+
+    Returns:
+        bool: The result of the comparison.
+    """
     try:
         if op == "$eq":
             return bool(value == target)

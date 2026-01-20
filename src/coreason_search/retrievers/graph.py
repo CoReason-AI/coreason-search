@@ -18,22 +18,29 @@ from coreason_search.utils.logger import logger
 
 
 class GraphRetriever(BaseRetriever):
-    """
-    Graph Retriever Strategy.
+    """Graph Retriever Strategy.
+
     Performs 2-hop neighbor expansion:
     Query -> Papers -> AdverseEvents
     """
 
     def __init__(self) -> None:
+        """Initialize the Graph Retriever."""
         self.client = get_graph_client()
 
     def retrieve(self, request: SearchRequest) -> List[Hit]:
-        """
-        Execute Graph Retrieval.
+        """Execute Graph Retrieval.
+
         1. Search for nodes matching the query.
         2. Expand 1-hop to find connected "Paper" nodes.
         3. Expand 2-hop to find connected "AdverseEvent" nodes.
         4. Return Papers that bridge Query -> Paper -> AdverseEvent.
+
+        Args:
+            request: The search request.
+
+        Returns:
+            List[Hit]: The retrieved hits.
         """
         query_text = extract_query_text(request.query)
 
@@ -53,8 +60,7 @@ class GraphRetriever(BaseRetriever):
         return hits[: request.top_k]
 
     def _process_start_node(self, node: GraphNode, hits: List[Hit], seen_ids: Set[str]) -> None:
-        """
-        Expand from a start node to find connected Papers and validate them.
+        """Expand from a start node to find connected Papers and validate them.
 
         Args:
             node: The starting GraphNode (from query).
@@ -69,8 +75,7 @@ class GraphRetriever(BaseRetriever):
                 self._validate_and_add_paper(neighbor, hits, seen_ids)
 
     def _validate_and_add_paper(self, paper_node: GraphNode, hits: List[Hit], seen_ids: Set[str]) -> None:
-        """
-        Check if a candidate paper connects to an Adverse Event, and if so, add it.
+        """Check if a candidate paper connects to an Adverse Event, and if so, add it.
 
         Args:
             paper_node: The candidate Paper node.
@@ -89,8 +94,7 @@ class GraphRetriever(BaseRetriever):
             hits.append(self._create_hit(paper_node, adverse_events_set))
 
     def _create_hit(self, paper_node: GraphNode, adverse_events_set: Set[str]) -> Hit:
-        """
-        Construct a Hit object from a Paper node and its connected adverse events.
+        """Construct a Hit object from a Paper node and its connected adverse events.
 
         Args:
             paper_node: The GraphNode representing the paper.

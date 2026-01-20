@@ -20,18 +20,16 @@ from coreason_search.utils.mapper import LanceMapper
 
 
 class DenseRetriever(BaseRetriever):
-    """
-    Dense Vector Retriever strategy using LanceDB and Qwen3/Mock Embeddings.
-    """
+    """Dense Vector Retriever strategy using LanceDB and Qwen3/Mock Embeddings."""
 
     def __init__(self) -> None:
+        """Initialize the Dense Retriever."""
         self.db_manager = get_db_manager()
         self.embedder = get_embedder()
         self.table = self.db_manager.get_table()
 
     def retrieve(self, request: SearchRequest) -> List[Hit]:
-        """
-        Execute dense vector retrieval.
+        """Execute dense vector retrieval.
 
         Args:
             request: The search request containing the query and parameters.
