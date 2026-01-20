@@ -16,15 +16,14 @@ from coreason_search.utils.logger import logger
 
 
 class VeritasProtocol(ABC):
-    """
-    Protocol for the Coreason Veritas Audit System.
+    """Protocol for the Coreason Veritas Audit System.
+
     Ensures research-grade reproducibility and auditability.
     """
 
     @abstractmethod
     def log_audit(self, event: str, data: Dict[str, Any]) -> None:
-        """
-        Log an audit event.
+        """Log an audit event.
 
         Args:
             event: The event name (e.g., "SYSTEMATIC_SEARCH_START").
@@ -34,15 +33,19 @@ class VeritasProtocol(ABC):
 
 
 class MockVeritasClient(VeritasProtocol):
-    """
-    Mock implementation of Veritas Client.
+    """Mock implementation of Veritas Client.
+
     Logs structured JSON to the standard logger.
     """
 
     def log_audit(self, event: str, data: Dict[str, Any]) -> None:
-        """
-        Log the audit event to the application logger with a specific structure.
+        """Log the audit event to the application logger with a specific structure.
+
         In a real implementation, this would send data to the Veritas service.
+
+        Args:
+            event: The event name.
+            data: The audit data.
         """
         audit_payload = {
             "component": "coreason-search",
@@ -54,7 +57,11 @@ class MockVeritasClient(VeritasProtocol):
 
 @lru_cache(maxsize=32)
 def get_veritas_client() -> VeritasProtocol:
-    """Singleton factory for Veritas Client."""
+    """Singleton factory for Veritas Client.
+
+    Returns:
+        VeritasProtocol: An instance of the veritas client.
+    """
     return MockVeritasClient()
 
 

@@ -27,17 +27,30 @@ from coreason_search.veritas import get_veritas_client
 
 
 class SearchEngine:
-    """
-    Unified Retrieval Execution Engine.
-    Orchestrates Embedder, Retrievers, Fusion, Reranker, and Scout.
+    """Unified Retrieval Execution Engine.
+
+    Orchestrates Embedder, Retrievers, Fusion, Reranker, and Scout to perform
+    search operations. Handles both ad-hoc RAG queries and systematic reviews.
+
+    Attributes:
+        config: The application configuration.
+        db_manager: Manager for the LanceDB database.
+        embedder: The embedding model instance.
+        dense_retriever: Retriever for dense vector search.
+        sparse_retriever: Retriever for sparse/boolean search.
+        graph_retriever: Retriever for graph-based search.
+        fusion_engine: Engine for fusing results from multiple retrievers.
+        reranker: The re-ranking model instance.
+        scout: The context distillation (scout) instance.
+        veritas: Client for audit logging.
     """
 
     def __init__(self, config: Optional[Union[Settings, str]] = None) -> None:
-        """
-        Initialize the Search Engine.
+        """Initialize the Search Engine.
 
         Args:
-            config: A Settings object or path to a config file.
+            config: A Settings object or path to a config file. If None,
+                defaults are loaded.
         """
         if isinstance(config, str):
             self.config = load_config(config)
@@ -75,9 +88,15 @@ class SearchEngine:
         self.veritas = get_veritas_client()
 
     def execute(self, request: SearchRequest) -> SearchResponse:
-        """
-        Execute a standard search request (RAG, Ad-hoc).
-        Returns a SearchResponse with top-k hits.
+        """Execute a standard search request (RAG, Ad-hoc).
+
+        Performs retrieval, fusion, re-ranking, and context distillation.
+
+        Args:
+            request: The search request containing query and parameters.
+
+        Returns:
+            SearchResponse: The search results including hits and metadata.
         """
         start_time = time.time()
         logger.info(f"Executing search: {request.strategies} query={request.query}")
@@ -163,12 +182,17 @@ class SearchEngine:
         )
 
     def execute_systematic(self, request: SearchRequest) -> Iterator[Hit]:
-        """
-        Execute a Systematic Search (Review Mode).
-        Returns a generator of Hits.
-        Strictly assumes SPARSE/Boolean strategy or similar.
-        Disables Rerank/Distill by default/enforced.
-        Logs to Veritas for audit.
+        """Execute a Systematic Search (Review Mode).
+
+        Returns a generator of Hits to handle large result sets.
+        Disables Re-ranking and Distillation by default.
+        Logs the search for audit purposes.
+
+        Args:
+            request: The search request.
+
+        Yields:
+            Hit: Search hits one by one.
         """
         # Get snapshot ID for audit
         try:

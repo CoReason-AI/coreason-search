@@ -17,9 +17,15 @@ from coreason_search.interfaces import BaseEmbedder
 
 @lru_cache(maxsize=32)
 def get_embedder(config: Optional[EmbeddingConfig] = None) -> BaseEmbedder:
-    """
-    Singleton factory for the Embedder.
+    """Singleton factory for the Embedder.
+
     Selects implementation based on config.provider.
+
+    Args:
+        config: Configuration for the embedder. Defaults to standard configuration if None.
+
+    Returns:
+        BaseEmbedder: An initialized embedder instance.
     """
     if config is None:
         config = EmbeddingConfig()

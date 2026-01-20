@@ -23,9 +23,17 @@ DEFAULT_TABLE_NAME = "documents"
 
 
 class DocumentSchema(LanceModel):  # type: ignore[misc]
-    """
-    Schema for documents stored in LanceDB.
+    """Schema for documents stored in LanceDB.
+
     Using LanceModel for direct Pydantic integration.
+
+    Attributes:
+        doc_id: Unique document identifier.
+        vector: Dense vector embedding.
+        content: Main content of the document.
+        title: Document title for FTS.
+        abstract: Document abstract for FTS.
+        metadata: JSON stringified metadata.
     """
 
     doc_id: str = Field(..., description="Unique document identifier")
@@ -38,7 +46,17 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
     @field_validator("metadata")
     @classmethod
     def validate_metadata_json(cls, v: str) -> str:
-        """Ensure metadata is a valid JSON string."""
+        """Ensure metadata is a valid JSON string.
+
+        Args:
+            v: The metadata string to validate.
+
+        Returns:
+            str: The validated metadata string.
+
+        Raises:
+            ValueError: If the metadata string is not valid JSON.
+        """
         if not v:
             return v
         if v.strip() == "":
@@ -51,26 +69,40 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
 
 
 class LanceDBManager:
-    """
-    Manager for LanceDB connection and table access.
+    """Manager for LanceDB connection and table access.
+
+    Attributes:
+        uri: The URI of the LanceDB instance.
+        db: The connected LanceDB instance.
     """
 
     def __init__(self, uri: str = "/tmp/lancedb"):
-        """
-        Initialize the connection.
+        """Initialize the connection.
+
+        Args:
+            uri: The URI for the LanceDB instance. Defaults to "/tmp/lancedb".
         """
         self.uri = uri
         self.connect(uri)
 
     def connect(self, uri: str) -> None:
-        """Connect to the LanceDB instance."""
+        """Connect to the LanceDB instance.
+
+        Args:
+            uri: The URI to connect to.
+        """
         logger.info(f"Connecting to LanceDB at {uri}")
         self.db = lancedb.connect(uri)
         self.uri = uri
 
     def get_table(self, name: str = DEFAULT_TABLE_NAME) -> lancedb.table.Table:
-        """
-        Get the table, creating it if it doesn't exist.
+        """Get the table, creating it if it doesn't exist.
+
+        Args:
+            name: The name of the table to retrieve. Defaults to DEFAULT_TABLE_NAME.
+
+        Returns:
+            lancedb.table.Table: The LanceDB table object.
         """
         # Check if table exists
         tables = self.db.list_tables()
@@ -90,11 +122,17 @@ _DB_MANAGER: Optional[LanceDBManager] = None
 
 
 def get_db_manager(uri: Optional[str] = None) -> LanceDBManager:
-    """
-    Factory function to get the DB manager.
+    """Factory function to get the DB manager.
+
     Implements explicit singleton pattern.
     If 'uri' is provided, initializes/overwrites the singleton with that URI.
     If 'uri' is None, returns the existing singleton (or initializes default).
+
+    Args:
+        uri: Optional URI for the database.
+
+    Returns:
+        LanceDBManager: The singleton instance of the database manager.
     """
     global _DB_MANAGER
 
