@@ -33,11 +33,11 @@ class TestEngineConfig:
         engine = SearchEngine(config)
 
         # Verify components got the config
-        assert engine.config.database_uri == "/tmp/test_engine_db"
-        assert engine.db_manager.uri == "/tmp/test_engine_db"
+        assert engine._async.config.database_uri == "/tmp/test_engine_db"
+        assert engine._async.db_manager.uri == "/tmp/test_engine_db"
 
         # Check Scout config
-        scout = cast(MockScout, engine.scout)
+        scout = cast(MockScout, engine._async.scout)
         assert scout.config.threshold == 0.9
 
     def test_engine_initialization_with_yaml_file(self) -> None:
@@ -50,8 +50,8 @@ class TestEngineConfig:
 
         try:
             engine = SearchEngine(temp_path)
-            assert engine.config.database_uri == "/tmp/test_yaml_db"
-            scout = cast(MockScout, engine.scout)
+            assert engine._async.config.database_uri == "/tmp/test_yaml_db"
+            scout = cast(MockScout, engine._async.scout)
             assert scout.config.threshold == 0.1
         finally:
             if os.path.exists(temp_path):
@@ -63,7 +63,7 @@ class TestEngineConfig:
         engine = SearchEngine(config)
 
         # Check Embedder
-        embedder = cast(MockEmbedder, engine.embedder)
+        embedder = cast(MockEmbedder, engine._async.embedder)
         assert embedder.config.model_name == "prop-model"
 
         # Check DB

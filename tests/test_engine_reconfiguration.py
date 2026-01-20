@@ -43,17 +43,17 @@ class TestEngineReconfiguration:
         # We need to manually add data using the managers held by the retrievers
         # because engine doesn't expose "add" method directly.
 
-        embedder = engine_a.embedder  # Should be generic/mock
+        embedder = engine_a._async.embedder  # Should be generic/mock
 
         # Add doc to A
-        table_a = engine_a.dense_retriever.table
+        table_a = engine_a._async.dense_retriever.table
         doc_a = DocumentSchema(
             doc_id="doc_a", vector=embedder.embed("A")[0], content="Content A", metadata=json.dumps({"source": "A"})
         )
         table_a.add([doc_a])
 
         # Add doc to B
-        table_b = engine_b.dense_retriever.table
+        table_b = engine_b._async.dense_retriever.table
         doc_b = DocumentSchema(
             doc_id="doc_b", vector=embedder.embed("B")[0], content="Content B", metadata=json.dumps({"source": "B"})
         )
@@ -61,7 +61,8 @@ class TestEngineReconfiguration:
 
         # Verify Search A returns only A
         req_a = SearchRequest(query="A", strategies=[RetrieverType.LANCE_DENSE])
-        res_a = engine_a.execute(req_a)
+        with engine_a:
+            res_a = engine_a.execute(req_a)
 
         # Depending on mock embedding, "A" might match "B" if random vector is close,
         # but we check doc_id presence.
@@ -71,7 +72,9 @@ class TestEngineReconfiguration:
 
         # Verify Search B returns only B
         req_b = SearchRequest(query="B", strategies=[RetrieverType.LANCE_DENSE])
-        res_b = engine_b.execute(req_b)
+        with engine_b:
+            res_b = engine_b.execute(req_b)
+
         ids_b = [h.doc_id for h in res_b.hits]
         assert "doc_b" in ids_b
         assert "doc_a" not in ids_b
