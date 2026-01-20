@@ -23,9 +23,17 @@ DEFAULT_TABLE_NAME = "documents"
 
 
 class DocumentSchema(LanceModel):  # type: ignore[misc]
-    """
-    Schema for documents stored in LanceDB.
+    """Schema for documents stored in LanceDB.
+
     Using LanceModel for direct Pydantic integration.
+
+    Attributes:
+        doc_id: Unique document identifier.
+        vector: Dense vector embedding.
+        content: Main content of the document.
+        title: Document title for FTS.
+        abstract: Document abstract for FTS.
+        metadata: JSON stringified metadata.
     """
 
     doc_id: str = Field(..., description="Unique document identifier")
@@ -38,13 +46,19 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
     @field_validator("metadata")
     @classmethod
     def validate_metadata_json(cls, v: str) -> str:
-        """Ensure metadata is a valid JSON string."""
+        """Ensure metadata is a valid JSON string.
+
+        Args:
+            v: The metadata string to validate.
+
+        Returns:
+            str: The validated metadata string.
+
+        Raises:
+            ValueError: If the metadata string is not valid JSON.
+        """
         if not v:
-            return v  # Allow empty string if that's desired, or enforce {}?
-            # Let's enforce it must be valid JSON or empty.
-            # If empty string, technically not valid JSON unless it's "" which loads as... fail.
-            # But earlier tests used "" and it passed.
-            # Let's allow empty string to mean "no metadata".
+            return v
         if v.strip() == "":
             return v
         try:
@@ -55,41 +69,43 @@ class DocumentSchema(LanceModel):  # type: ignore[misc]
 
 
 class LanceDBManager:
-    """
-    Singleton manager for LanceDB connection and table access.
-    """
+    """Manager for LanceDB connection and table access.
 
-    _instance: Optional["LanceDBManager"] = None
-
-    def __new__(cls, *args: object, **kwargs: object) -> "LanceDBManager":
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
+    Attributes:
+        uri: The URI of the LanceDB instance.
+        db: The connected LanceDB instance.
+    """
 
     def __init__(self, uri: str = "/tmp/lancedb"):
+        """Initialize the connection.
+
+        Args:
+            uri: The URI for the LanceDB instance. Defaults to "/tmp/lancedb".
         """
-        Initialize the connection.
-        If already initialized, this serves as a re-configuration/reset if needed,
-        but typically we check if self.db exists.
-        """
-        if not hasattr(self, "db") or self.db is None:
-            self.uri = uri
-            self.connect(uri)
+        self.uri = uri
+        self.connect(uri)
 
     def connect(self, uri: str) -> None:
-        """Connect to the LanceDB instance."""
+        """Connect to the LanceDB instance.
+
+        Args:
+            uri: The URI to connect to.
+        """
         logger.info(f"Connecting to LanceDB at {uri}")
         self.db = lancedb.connect(uri)
         self.uri = uri
 
     def get_table(self, name: str = DEFAULT_TABLE_NAME) -> lancedb.table.Table:
-        """
-        Get the table, creating it if it doesn't exist.
-        Handles schema evolution by opening existing tables without enforcing strict schema match immediately.
+        """Get the table, creating it if it doesn't exist.
+
+        Args:
+            name: The name of the table to retrieve. Defaults to DEFAULT_TABLE_NAME.
+
+        Returns:
+            lancedb.table.Table: The LanceDB table object.
         """
         # Check if table exists
         tables = self.db.list_tables()
-        # lancedb > 0.26 might return an object with a .tables attribute
         if hasattr(tables, "tables"):
             table_names = tables.tables
         else:
@@ -98,15 +114,40 @@ class LanceDBManager:
         if name in table_names:
             return self.db.open_table(name)
 
-        # If not, create with current schema
         return self.db.create_table(name, schema=DocumentSchema)
 
-    def reset(self) -> None:
-        """Reset the singleton (useful for tests)."""
-        self.db = None
-        LanceDBManager._instance = None
+
+# Global singleton instance
+_DB_MANAGER: Optional[LanceDBManager] = None
 
 
-def get_db_manager(uri: str = "/tmp/lancedb") -> LanceDBManager:
-    """Factory function to get the DB manager."""
-    return LanceDBManager(uri)
+def get_db_manager(uri: Optional[str] = None) -> LanceDBManager:
+    """Factory function to get the DB manager.
+
+    Implements explicit singleton pattern.
+    If 'uri' is provided, initializes/overwrites the singleton with that URI.
+    If 'uri' is None, returns the existing singleton (or initializes default).
+
+    Args:
+        uri: Optional URI for the database.
+
+    Returns:
+        LanceDBManager: The singleton instance of the database manager.
+    """
+    global _DB_MANAGER
+
+    if uri is not None:
+        if _DB_MANAGER is None or _DB_MANAGER.uri != uri:
+            _DB_MANAGER = LanceDBManager(uri)
+        return _DB_MANAGER
+
+    if _DB_MANAGER is None:
+        _DB_MANAGER = LanceDBManager()
+
+    return _DB_MANAGER
+
+
+def reset_db_manager() -> None:
+    """Reset the singleton (useful for tests)."""
+    global _DB_MANAGER
+    _DB_MANAGER = None

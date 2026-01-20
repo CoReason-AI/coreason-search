@@ -8,86 +8,58 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from abc import ABC, abstractmethod
-from typing import List, Optional, Union
+from functools import lru_cache
+from typing import Optional
 
-import numpy as np
-
-from coreason_search.schemas import EmbeddingConfig
-
-
-class BaseEmbedder(ABC):
-    """Abstract base class for all embedders."""
-
-    @abstractmethod
-    def embed(self, text: Union[str, List[str]]) -> np.ndarray:
-        """
-        Embed a string or list of strings into a numpy array.
-
-        Args:
-            text: Single string or list of strings to embed.
-
-        Returns:
-            np.ndarray: Array of shape (1, dim) or (n, dim).
-        """
-        pass  # pragma: no cover
+from coreason_search.config import EmbeddingConfig
+from coreason_search.interfaces import BaseEmbedder
 
 
-class MockEmbedder(BaseEmbedder):
-    """
-    Mock embedder that generates random vectors.
-    Used for testing and environments where heavy models cannot be loaded.
-    """
-
-    def __init__(self, config: EmbeddingConfig):
-        self.config = config
-        # Qwen2-7B-instruct is 3584 dims, but we can default to 1024 or whatever
-        # Since this is a mock, we'll use a fixed dimension for consistency unless specified.
-        # Let's say 768 as a common default, or maybe we should add `embedding_dim` to config?
-        # The config schema doesn't have it. I'll hardcode a "mock" dimension or infer.
-        self.embedding_dim = 1024
-
-    def embed(self, text: Union[str, List[str]]) -> np.ndarray:
-        if isinstance(text, str):
-            text = [text]
-
-        if not text:
-            return np.empty((0, self.embedding_dim), dtype=np.float32)
-
-        # Generate random embeddings
-        # Seed based on text length to have deterministic-ish behavior for same input length?
-        # Or just random. For a mock, random is fine, but deterministic is better for tests.
-        # I'll use a fixed seed per call to ensure reproducibility if needed,
-        # but pure random is also acceptable for "Mock".
-        # Let's use a simple deterministic generation based on string hash to be fancy?
-        # No, "generates random numpy arrays" was the instruction.
-        rng = np.random.default_rng(42)
-        count = len(text)
-        embeddings = rng.random((count, self.embedding_dim), dtype=np.float32)
-
-        if self.config.model_name:
-            # Just accessing config to ensure it's used
-            pass
-
-        return embeddings
-
-
-_embedder_instance: Optional[BaseEmbedder] = None
-
-
+@lru_cache(maxsize=32)
 def get_embedder(config: Optional[EmbeddingConfig] = None) -> BaseEmbedder:
+    """Singleton factory for the Embedder.
+
+    Selects implementation based on config.provider.
+
+    Args:
+        config: Configuration for the embedder. Defaults to standard configuration if None.
+
+    Returns:
+        BaseEmbedder: An initialized embedder instance.
     """
-    Singleton factory for the Embedder.
-    """
-    global _embedder_instance
-    if _embedder_instance is None:
-        if config is None:
-            config = EmbeddingConfig()
-        _embedder_instance = MockEmbedder(config)
-    return _embedder_instance
+    if config is None:
+        config = EmbeddingConfig()
+
+    from coreason_search.embedders.mock import MockEmbedder
+    from coreason_search.utils.logger import logger
+
+    # Explicit Mock
+    if config.provider == "mock":
+        return MockEmbedder(config)
+
+    # Explicit HF
+    if config.provider == "hf":
+        from coreason_search.embedders.hf import HuggingFaceEmbedder
+
+        return HuggingFaceEmbedder(config)
+
+    # Auto: Try HF, fall back to Mock
+    if config.provider == "auto":
+        try:
+            from coreason_search.embedders.hf import HuggingFaceEmbedder
+
+            return HuggingFaceEmbedder(config)
+        except ImportError:
+            logger.warning("Could not load HuggingFaceEmbedder (missing dependencies). Falling back to MockEmbedder.")
+            return MockEmbedder(config)
+        except Exception as e:  # pragma: no cover
+            logger.error(f"Failed to initialize HuggingFaceEmbedder: {e}. Falling back to MockEmbedder.")
+            return MockEmbedder(config)
+
+    # Default fallback
+    return MockEmbedder(config)  # pragma: no cover
 
 
 def reset_embedder() -> None:
-    """Reset the singleton instance (useful for testing)."""
-    global _embedder_instance
-    _embedder_instance = None
+    """Reset the singleton instance (clear cache)."""
+    get_embedder.cache_clear()

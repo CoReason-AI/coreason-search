@@ -16,27 +16,48 @@ import numpy as np
 import pytest
 from lancedb.table import Table
 
-from coreason_search.db import DocumentSchema, LanceDBManager, get_db_manager
+from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 
 
 class TestLanceDBManager:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: Path) -> Generator[None, None, None]:
         # Reset singleton before each test
-        manager = get_db_manager(str(tmp_path))
-        manager.reset()
+        reset_db_manager()
         yield
         # Reset after test
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
+        reset_db_manager()
 
     def test_singleton_behavior(self, tmp_path: Path) -> None:
         """Test that get_db_manager returns the same instance."""
         uri = str(tmp_path / "lancedb")
+
+        # 1. Initialize with URI
         manager1 = get_db_manager(uri)
-        manager2 = get_db_manager(uri)
+
+        # 2. Get without URI should return the existing instance
+        manager2 = get_db_manager()
         assert manager1 is manager2
-        assert manager1.uri == uri
+
+        # 3. Get with SAME URI should return existing instance
+        manager3 = get_db_manager(uri)
+        assert manager1 is manager3
+
+        # 4. Get with NEW URI should overwrite instance
+        uri2 = str(tmp_path / "lancedb_2")
+        manager4 = get_db_manager(uri2)
+        assert manager4 is not manager1
+        assert manager4.uri == uri2
+
+        # 5. Subsequent get without URI should return the NEW instance
+        manager5 = get_db_manager()
+        assert manager5 is manager4
+
+    def test_default_initialization(self, tmp_path: Path) -> None:
+        """Test default initialization without arguments (dead code coverage)."""
+        reset_db_manager()
+        manager = get_db_manager()
+        assert manager.uri == "/tmp/lancedb"
 
     def test_table_creation(self, tmp_path: Path) -> None:
         """Test that get_table creates the table if it doesn't exist."""
@@ -138,7 +159,7 @@ class TestLanceDBManager:
         table.add([doc])
 
         # Reset and reconnect
-        manager.reset()
+        reset_db_manager()
         new_manager = get_db_manager(uri)
         new_table = new_manager.get_table()
 

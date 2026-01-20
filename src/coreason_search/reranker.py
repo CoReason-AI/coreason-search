@@ -8,20 +8,47 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
-from coreason_search.interfaces import BaseReranker
+from coreason_search.config import RerankerConfig
 from coreason_search.schemas import Hit
 
 
+class BaseReranker(ABC):
+    """Abstract base class for re-rankers."""
+
+    @abstractmethod
+    def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
+        """Re-rank the hits using a cross-encoder or other logic.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to re-rank.
+            top_k: The number of top results to return.
+
+        Returns:
+            List[Hit]: The re-ranked list of hits.
+        """
+        pass  # pragma: no cover
+
+
 class MockReranker(BaseReranker):
-    """
-    Mock Re-Ranker that simulates Cross-Encoder behavior.
-    """
+    """Mock Re-Ranker that simulates Cross-Encoder behavior."""
+
+    def __init__(self, config: Optional[RerankerConfig] = None):
+        """Initialize the Mock Reranker.
+
+        Args:
+            config: Configuration for the reranker.
+        """
+        self.config = config or RerankerConfig()
 
     def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
-        """
-        Mock re-ranking.
+        """Mock re-ranking.
+
+        Simulates re-ranking by scoring based on content length (longer is better for mock).
 
         Args:
             query: The user query.
@@ -57,17 +84,19 @@ class MockReranker(BaseReranker):
         return scored_hits[:top_k]
 
 
-_reranker_instance: Optional[BaseReranker] = None
+@lru_cache(maxsize=32)
+def get_reranker(config: Optional[RerankerConfig] = None) -> BaseReranker:
+    """Singleton factory for Reranker.
 
+    Args:
+        config: Configuration for the reranker.
 
-def get_reranker() -> BaseReranker:
-    """Singleton factory for Reranker."""
-    global _reranker_instance
-    if _reranker_instance is None:
-        _reranker_instance = MockReranker()
-    return _reranker_instance
+    Returns:
+        BaseReranker: An instance of the reranker.
+    """
+    return MockReranker(config)
 
 
 def reset_reranker() -> None:
-    global _reranker_instance
-    _reranker_instance = None
+    """Reset the singleton (clear cache)."""
+    get_reranker.cache_clear()

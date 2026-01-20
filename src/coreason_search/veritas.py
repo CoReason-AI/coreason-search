@@ -9,21 +9,21 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from functools import lru_cache
+from typing import Any, Dict
 
 from coreason_search.utils.logger import logger
 
 
 class VeritasProtocol(ABC):
-    """
-    Protocol for the Coreason Veritas Audit System.
+    """Protocol for the Coreason Veritas Audit System.
+
     Ensures research-grade reproducibility and auditability.
     """
 
     @abstractmethod
     def log_audit(self, event: str, data: Dict[str, Any]) -> None:
-        """
-        Log an audit event.
+        """Log an audit event.
 
         Args:
             event: The event name (e.g., "SYSTEMATIC_SEARCH_START").
@@ -33,15 +33,19 @@ class VeritasProtocol(ABC):
 
 
 class MockVeritasClient(VeritasProtocol):
-    """
-    Mock implementation of Veritas Client.
+    """Mock implementation of Veritas Client.
+
     Logs structured JSON to the standard logger.
     """
 
     def log_audit(self, event: str, data: Dict[str, Any]) -> None:
-        """
-        Log the audit event to the application logger with a specific structure.
+        """Log the audit event to the application logger with a specific structure.
+
         In a real implementation, this would send data to the Veritas service.
+
+        Args:
+            event: The event name.
+            data: The audit data.
         """
         audit_payload = {
             "component": "coreason-search",
@@ -51,18 +55,16 @@ class MockVeritasClient(VeritasProtocol):
         logger.info(f"VERITAS_AUDIT: {audit_payload}")
 
 
-_veritas_instance: Optional[VeritasProtocol] = None
-
-
+@lru_cache(maxsize=32)
 def get_veritas_client() -> VeritasProtocol:
-    """Singleton factory for Veritas Client."""
-    global _veritas_instance
-    if _veritas_instance is None:
-        _veritas_instance = MockVeritasClient()
-    return _veritas_instance
+    """Singleton factory for Veritas Client.
+
+    Returns:
+        VeritasProtocol: An instance of the veritas client.
+    """
+    return MockVeritasClient()
 
 
 def reset_veritas_client() -> None:
     """Reset singleton (for testing)."""
-    global _veritas_instance
-    _veritas_instance = None
+    get_veritas_client.cache_clear()

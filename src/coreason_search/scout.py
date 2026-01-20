@@ -8,65 +8,157 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
+import re
+from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import Dict, List, Optional, Union
 
-from coreason_search.interfaces import BaseScout
+from coreason_search.config import ScoutConfig
 from coreason_search.schemas import Hit
+from coreason_search.utils.common import extract_query_text
+
+# Pre-compiled regex for sentence splitting
+# Split on . ! ? followed by whitespace using lookbehind
+SENTENCE_SPLIT_REGEX = re.compile(r"(?<=[.!?])\s+")
+# Pre-compiled regex for unit normalization (removing non-word chars)
+UNIT_NORMALIZATION_REGEX = re.compile(r"[^\w\s]")
+
+
+class BaseScout(ABC):
+    """Abstract base class for The Scout (Context Distiller)."""
+
+    @abstractmethod
+    def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
+        """Distill the content of the hits, removing irrelevant parts.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to process.
+
+        Returns:
+            List[Hit]: The list of hits with 'distilled_text' populated/updated.
+        """
+        pass  # pragma: no cover
 
 
 class MockScout(BaseScout):
+    """Mock implementation of The Scout.
+
+    Implements the Segmentation -> Scoring -> Filtering pipeline
+    using deterministic heuristics for testing.
     """
-    Mock implementation of The Scout.
-    Does not use heavy ML models.
-    """
+
+    def __init__(self, config: Optional[ScoutConfig] = None):
+        """Initialize the Mock Scout.
+
+        Args:
+            config: Configuration for the scout.
+        """
+        self.config = config or ScoutConfig()
 
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
+        """Mock distillation.
+
+        1. Segment text into sentences.
+        2. Score sentences based on keyword overlap with query.
+        3. Filter out sentences with score 0.
+
+        Args:
+            query: The user query.
+            hits: The list of hits to process.
+
+        Returns:
+            List[Hit]: The list of hits with distilled content.
         """
-        Mock distillation: just copies original_text to distilled_text,
-        maybe truncates it to simulate 'distillation'.
-        """
+        query_text = extract_query_text(query)
+        # Normalize query terms once
+        query_terms = set(query_text.lower().split())
+
         distilled_hits = []
         for hit in hits:
-            # For the mock, we pretend we 'distilled' it by taking the first 50% of the characters
-            # or just copying it if it's short.
-            # This simulates the "removal of fluff".
-            original_len = len(hit.original_text)
-            # If empty, slicing gives empty
-            keep_len = max(1, original_len // 2) if original_len > 0 else 0
-
-            # Important: In a real implementation, we'd update distilled_text.
-            # We must return a new Hit or modify the existing one.
-            # Pydantic models are mutable by default unless configured otherwise.
-
-            # Let's create a copy to avoid side effects on the input list if needed,
-            # but for performance we might modify in place.
-            # The interface says returns List[Hit].
-
-            # We'll just modify the current hit instance for now or create a copy if we want to be functional.
-            # Given Pydantic, copy() (v1) or model_copy() (v2) is good.
+            # Create a copy of the hit
             new_hit = hit.model_copy()
-            if original_len == 0:
-                new_hit.distilled_text = "..."
+            original_text = hit.original_text
+
+            if not original_text:
+                new_hit.distilled_text = ""
+                distilled_hits.append(new_hit)
+                continue
+
+            # 1. Segmentation
+            segments = self._segment(original_text)
+
+            # 2. Scoring & 3. Filtering
+            relevant_segments = []
+            for seg in segments:
+                score = self._score_unit(seg, query_terms)
+                # Use threshold from config
+                if score > self.config.threshold:
+                    relevant_segments.append(seg)
+
+            # Reconstruct
+            if relevant_segments:
+                new_hit.distilled_text = " ".join(relevant_segments)
             else:
-                new_hit.distilled_text = hit.original_text[:keep_len] + "..."
+                new_hit.distilled_text = ""
 
             distilled_hits.append(new_hit)
 
         return distilled_hits
 
+    def _segment(self, text: str) -> List[str]:
+        """Split text into logical units (sentences).
 
-_scout_instance: Optional[BaseScout] = None
+        Uses pre-compiled regex.
+
+        Args:
+            text: The text to segment.
+
+        Returns:
+            List[str]: A list of sentence segments.
+        """
+        return [s.strip() for s in SENTENCE_SPLIT_REGEX.split(text) if s.strip()]
+
+    def _score_unit(self, unit: str, query_terms: set[str]) -> float:
+        """Score a unit based on presence of query terms.
+
+        Returns 1.0 if any query term is present as a substring, 0.0 otherwise.
+
+        Args:
+            unit: The text unit to score.
+            query_terms: The set of query terms to look for.
+
+        Returns:
+            float: The relevance score (0.0 or 1.0).
+        """
+        # Simple normalization
+        unit_clean = unit.lower()
+
+        if not query_terms:
+            return 0.0
+
+        # Substring matching
+        for term in query_terms:
+            if term in unit_clean:
+                return 1.0
+        return 0.0
 
 
-def get_scout() -> BaseScout:
-    """Singleton factory for Scout."""
-    global _scout_instance
-    if _scout_instance is None:
-        _scout_instance = MockScout()
-    return _scout_instance
+@lru_cache(maxsize=32)
+def get_scout(config: Optional[ScoutConfig] = None) -> BaseScout:
+    """Singleton factory for Scout.
+
+    Args:
+        config: Configuration for the scout.
+
+    Returns:
+        BaseScout: An instance of the scout.
+    """
+    if config is None:
+        config = ScoutConfig()
+    return MockScout(config)
 
 
 def reset_scout() -> None:
     """Reset singleton."""
-    global _scout_instance
-    _scout_instance = None
+    get_scout.cache_clear()

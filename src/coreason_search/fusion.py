@@ -14,24 +14,24 @@ from coreason_search.schemas import Hit
 
 
 class FusionEngine:
-    """
-    Fusion Engine using Reciprocal Rank Fusion (RRF).
+    """Fusion Engine using Reciprocal Rank Fusion (RRF).
+
+    Combines results from multiple retrieval strategies into a single ranked list.
     """
 
     def __init__(self, k: int = 60):
-        """
-        Initialize Fusion Engine.
+        """Initialize Fusion Engine.
+
         Args:
-            k: The constant k for RRF (default 60).
+            k: The constant k for RRF. Defaults to 60.
         """
         self.k = k
 
     def fuse(self, results: List[List[Hit]]) -> List[Hit]:
-        """
-        Fuse multiple lists of Hits into a single ranked list.
+        """Fuse multiple lists of Hits into a single ranked list.
 
         Args:
-            results: A list of lists of Hit objects.
+            results: A list of lists of Hit objects from different strategies.
 
         Returns:
             List[Hit]: A single list of fused, unique Hits sorted by RRF score.

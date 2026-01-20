@@ -17,7 +17,7 @@ import pytest
 from lancedb.pydantic import LanceModel, Vector
 from pydantic import Field, ValidationError
 
-from coreason_search.db import VECTOR_DIM, DocumentSchema, LanceDBManager, get_db_manager
+from coreason_search.db import VECTOR_DIM, DocumentSchema, get_db_manager, reset_db_manager
 
 
 # --- Helper for Legacy Schema ---
@@ -36,12 +36,10 @@ class TestDBEdgeCases:
     @pytest.fixture(autouse=True)  # type: ignore[misc]
     def setup_teardown(self, tmp_path: Path) -> Generator[None, None, None]:
         # Reset singleton before each test
-        manager = get_db_manager(str(tmp_path))
-        manager.reset()
+        reset_db_manager()
         yield
         # Reset after test
-        if LanceDBManager._instance:
-            LanceDBManager._instance.reset()
+        reset_db_manager()
 
     def test_boundary_strings(self, tmp_path: Path) -> None:
         """Test empty strings, whitespace, and Unicode in title/abstract."""

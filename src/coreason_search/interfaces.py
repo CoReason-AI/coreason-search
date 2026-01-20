@@ -11,7 +11,25 @@
 from abc import ABC, abstractmethod
 from typing import Dict, List, Union
 
+import numpy as np
+
 from coreason_search.schemas import Hit, SearchRequest
+
+
+class BaseEmbedder(ABC):
+    """Abstract base class for all embedders."""
+
+    @abstractmethod
+    def embed(self, text: Union[str, List[str]]) -> np.ndarray:
+        """Embed a string or list of strings into a numpy array.
+
+        Args:
+            text: Single string or list of strings to embed.
+
+        Returns:
+            np.ndarray: Array of shape (1, dim) or (n, dim).
+        """
+        pass  # pragma: no cover
 
 
 class BaseRetriever(ABC):
@@ -19,8 +37,7 @@ class BaseRetriever(ABC):
 
     @abstractmethod
     def retrieve(self, request: SearchRequest) -> List[Hit]:
-        """
-        Execute the retrieval strategy.
+        """Execute the retrieval strategy.
 
         Args:
             request: The full search request object.
@@ -36,8 +53,7 @@ class BaseReranker(ABC):
 
     @abstractmethod
     def rerank(self, query: Union[str, Dict[str, str]], hits: List[Hit], top_k: int) -> List[Hit]:
-        """
-        Re-rank the hits using a cross-encoder or other logic.
+        """Re-rank the hits using a cross-encoder or other logic.
 
         Args:
             query: The user query.
@@ -55,8 +71,7 @@ class BaseScout(ABC):
 
     @abstractmethod
     def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
-        """
-        Distill the content of the hits, removing irrelevant parts.
+        """Distill the content of the hits, removing irrelevant parts.
 
         Args:
             query: The user query.
