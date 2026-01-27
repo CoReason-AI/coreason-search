@@ -271,7 +271,7 @@ class TestScout:
             score=1.0,
             source_strategy="jit",
             metadata={},
-            source_pointer={"id": "doc1"}
+            source_pointer={"id": "doc1"},
         )
 
         # 1. Test with authorized context

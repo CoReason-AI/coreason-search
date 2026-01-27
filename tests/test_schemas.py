@@ -89,11 +89,7 @@ def test_search_request_complex_types() -> None:
 def test_search_request_user_context() -> None:
     """Test SearchRequest with user_context."""
     context = {"user_id": "u123", "roles": ["admin"]}
-    req = SearchRequest(
-        query="test",
-        strategies=[RetrieverType.LANCE_DENSE],
-        user_context=context
-    )
+    req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], user_context=context)
     assert req.user_context == context
 
 
@@ -126,7 +122,7 @@ def test_hit_pointer_schema() -> None:
         source_strategy="dense",
         metadata={},
         source_pointer={"uri": "s3://bucket/key"},
-        acls=["group:eng"]
+        acls=["group:eng"],
     )
     assert hit.doc_id == "123"
     assert hit.content is None

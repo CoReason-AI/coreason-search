@@ -43,9 +43,7 @@ class SearchRequest(BaseModel):
     distill_enabled: bool = Field(default=True, description="Enable The Scout context distillation")
     top_k: int = Field(default=5, gt=0, description="Number of results to return")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
-    user_context: Optional[Dict[str, Any]] = Field(
-        default=None, description="Context for delegated authentication"
-    )
+    user_context: Optional[Dict[str, Any]] = Field(default=None, description="Context for delegated authentication")
 
 
 class Hit(BaseModel):
@@ -70,9 +68,7 @@ class Hit(BaseModel):
     score: float
     source_strategy: str  # "dense" or "sparse"
     metadata: Dict[str, Any]
-    source_pointer: Optional[Dict[str, str]] = Field(
-        default=None, description="Pointer to external data source"
-    )
+    source_pointer: Optional[Dict[str, str]] = Field(default=None, description="Pointer to external data source")
     acls: List[str] = Field(default_factory=list, description="Access Control List")
 
 

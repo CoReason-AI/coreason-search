@@ -260,10 +260,7 @@ class TestSearchEngineAsync:
 
         user_context = {"role": "admin"}
         request = SearchRequest(
-            query="apple",
-            strategies=[RetrieverType.LANCE_DENSE],
-            user_context=user_context,
-            distill_enabled=True
+            query="apple", strategies=[RetrieverType.LANCE_DENSE], user_context=user_context, distill_enabled=True
         )
 
         # Mock the scout to verify call args
