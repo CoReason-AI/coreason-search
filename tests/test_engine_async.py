@@ -251,3 +251,24 @@ class TestSearchEngineAsync:
         async with engine:
             response = await engine.execute(request)
             assert len(response.hits) >= 1
+
+    @pytest.mark.asyncio
+    async def test_execute_passes_user_context(self) -> None:
+        """Test that user_context is passed to Scout.distill."""
+        self._seed_db()
+        engine = self._get_engine()
+
+        user_context = {"role": "admin"}
+        request = SearchRequest(
+            query="apple", strategies=[RetrieverType.LANCE_DENSE], user_context=user_context, distill_enabled=True
+        )
+
+        # Mock the scout to verify call args
+        with patch.object(engine.scout, "distill", wraps=engine.scout.distill) as mock_distill:
+            async with engine:
+                await engine.execute(request)
+
+            # Verify distill was called with user_context
+            assert mock_distill.call_count == 1
+            _, kwargs = mock_distill.call_args
+            assert kwargs.get("user_context") == user_context

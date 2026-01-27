@@ -72,7 +72,8 @@ class MockReranker(BaseReranker):
         for hit in hits:
             # Mock score: length of content. longer content = more relevant (just for mock)
             # In real life, cross encoder gives a float.
-            new_score = len(hit.content) * 0.01
+            content_len = len(hit.content) if hit.content else 0
+            new_score = content_len * 0.01
 
             new_hit = hit.model_copy()
             new_hit.score = new_score

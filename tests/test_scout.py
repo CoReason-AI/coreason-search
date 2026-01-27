@@ -8,7 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Dict, Generator
+from typing import Any, Dict, Generator, Optional
 
 import pytest
 
@@ -248,3 +248,45 @@ class TestScout:
         # This shows the limitation.
         # We'll see what happens.
         assert "Smith" in results2[0].distilled_text
+
+    def test_scout_jit_fetching(self) -> None:
+        """Test JIT fetching of content via workspace/fetcher."""
+
+        # Mock Fetcher
+        def mock_fetcher(source_pointer: Dict[str, str], user_context: Optional[Dict[str, Any]]) -> str:
+            # Verify we received the context
+            if user_context and user_context.get("secret") == "key":
+                return "Secret content is here. It is safe."
+            return "Public content."
+
+        # Instantiate Scout with fetcher
+        scout = MockScout(content_fetcher=mock_fetcher)
+
+        # Hit without original_text but with pointer
+        hit = Hit(
+            doc_id="jit-1",
+            content=None,
+            original_text=None,
+            distilled_text="",
+            score=1.0,
+            source_strategy="jit",
+            metadata={},
+            source_pointer={"id": "doc1"},
+        )
+
+        # 1. Test with authorized context
+        user_context = {"secret": "key"}
+        results = scout.distill(query="Secret", hits=[hit], user_context=user_context)
+
+        assert len(results) == 1
+        res = results[0]
+        # Should have fetched "Secret content is here. It is safe." and distilled it
+        assert "Secret content is here" in res.distilled_text
+        # Ephemeral check: original_text must NOT be populated on the result
+        assert res.original_text is None
+
+        # 2. Test without authorized context (Mock logic)
+        results_public = scout.distill(query="Public", hits=[hit], user_context=None)
+        assert len(results_public) == 1
+        assert "Public content" in results_public[0].distilled_text
+        assert results_public[0].original_text is None

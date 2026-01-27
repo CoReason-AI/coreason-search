@@ -36,6 +36,7 @@ class TestGraphRetriever:
         # Verify hit structure
         assert hits[0].source_strategy == "graph_neighbor"
         assert hits[0].score == 1.0
+        assert hits[0].content is not None
         assert "This paper discusses Protein X and liver failure." in hits[0].content
 
     def test_retrieve_no_node(self) -> None:
