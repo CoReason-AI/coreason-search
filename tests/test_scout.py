@@ -8,7 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Any, Dict, Generator, Optional
+from typing import Dict, Generator, Optional
 
 import pytest
 from coreason_identity.models import UserContext

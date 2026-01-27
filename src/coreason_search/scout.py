@@ -14,6 +14,7 @@ from functools import lru_cache
 from typing import Callable, Dict, List, Optional, Union
 
 from coreason_identity.models import UserContext
+
 from coreason_search.config import ScoutConfig
 from coreason_search.schemas import Hit
 from coreason_search.utils.common import extract_query_text
