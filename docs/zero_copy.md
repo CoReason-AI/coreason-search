@@ -46,10 +46,12 @@ Crucially, the fetched content is **Ephemeral**.
 To support JIT fetching which may require authentication, the `SearchRequest` now includes a `user_context` field.
 
 ```python
+from coreason_identity.models import UserContext
+
 request = SearchRequest(
     query="secret project",
     strategies=[...],
-    user_context={"token": "..."}
+    user_context=UserContext(sub="user", email="u@co.ai", permissions=["token"])
 )
 ```
 

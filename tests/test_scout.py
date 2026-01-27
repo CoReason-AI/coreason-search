@@ -8,9 +8,10 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import Any, Dict, Generator, Optional
+from typing import Dict, Generator, Optional
 
 import pytest
+from coreason_identity.models import UserContext
 
 from coreason_search.schemas import Hit
 from coreason_search.scout import MockScout, get_scout, reset_scout
@@ -253,9 +254,9 @@ class TestScout:
         """Test JIT fetching of content via workspace/fetcher."""
 
         # Mock Fetcher
-        def mock_fetcher(source_pointer: Dict[str, str], user_context: Optional[Dict[str, Any]]) -> str:
+        def mock_fetcher(source_pointer: Dict[str, str], user_context: Optional[UserContext]) -> str:
             # Verify we received the context
-            if user_context and user_context.get("secret") == "key":
+            if user_context and "secret_key" in user_context.permissions:
                 return "Secret content is here. It is safe."
             return "Public content."
 
@@ -275,7 +276,7 @@ class TestScout:
         )
 
         # 1. Test with authorized context
-        user_context = {"secret": "key"}
+        user_context = UserContext(sub="u", email="u@e.com", permissions=["secret_key"])
         results = scout.distill(query="Secret", hits=[hit], user_context=user_context)
 
         assert len(results) == 1
