@@ -31,7 +31,7 @@ class BaseScout(ABC):
 
     def __init__(
         self,
-        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], str]] = None,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], Optional[str]]] = None,
     ) -> None:
         """Initialize the Scout.
 
@@ -67,7 +67,7 @@ class MockScout(BaseScout):
     def __init__(
         self,
         config: Optional[ScoutConfig] = None,
-        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], str]] = None,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], Optional[str]]] = None,
     ):
         """Initialize the Mock Scout.
 
