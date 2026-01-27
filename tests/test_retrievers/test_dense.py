@@ -66,6 +66,7 @@ class TestDenseRetriever:
         assert hits[0].source_strategy == "lance_dense"
         # Since it's a mock embedder with random vectors, score is random but existing.
         assert isinstance(hits[0].score, float)
+        assert hits[0].original_text is not None
         assert hits[0].original_text.startswith("Document")
         assert hits[0].metadata["index"] in [0, 1, 2, 3, 4]
 

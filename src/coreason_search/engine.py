@@ -160,7 +160,9 @@ class SearchEngineAsync:
 
         # 4. Scout (Distillation)
         if request.distill_enabled and reranked_hits:
-            final_hits = await to_thread.run_sync(self.scout.distill, request.query, reranked_hits)
+            final_hits = await to_thread.run_sync(
+                lambda: self.scout.distill(request.query, reranked_hits, user_context=request.user_context)
+            )
         else:
             final_hits = reranked_hits
 
