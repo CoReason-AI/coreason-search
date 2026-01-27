@@ -20,7 +20,7 @@ from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 
 
 class TestDenseRetriever:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, setup_teardown_db_and_embedder: None) -> None:
         pass
 

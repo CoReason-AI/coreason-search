@@ -21,7 +21,7 @@ from coreason_search.embedders.hf import HuggingFaceEmbedder
 from coreason_search.embedders.mock import MockEmbedder
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def clean_embedder() -> Generator[None, None, None]:
     reset_embedder()
     yield

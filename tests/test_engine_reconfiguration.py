@@ -11,7 +11,7 @@ from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestEngineReconfiguration:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def reset_singletons(self) -> Generator[None, None, None]:
         reset_db_manager()
         reset_embedder()

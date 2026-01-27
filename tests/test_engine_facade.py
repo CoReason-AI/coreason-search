@@ -23,7 +23,7 @@ from coreason_search.schemas import RetrieverType, SearchRequest, SearchResponse
 class TestSearchEngineFacade:
     """Test the synchronous facade wrapping the async engine."""
 
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
         self.db_path = str(tmp_path) + "/lancedb_facade"
         reset_db_manager()
