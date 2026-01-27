@@ -33,6 +33,7 @@ class SearchRequest(BaseModel):
         distill_enabled: Whether to enable The Scout (context distillation). Defaults to True.
         top_k: Number of results to return. Defaults to 5.
         filters: Optional metadata filters (e.g., {"year": {"$gt": 2024}}).
+        user_context: Context for delegated authentication.
     """
 
     query: Union[str, Dict[str, str]] = Field(..., description="String for RAG, Dict for Boolean")
@@ -42,6 +43,9 @@ class SearchRequest(BaseModel):
     distill_enabled: bool = Field(default=True, description="Enable The Scout context distillation")
     top_k: int = Field(default=5, gt=0, description="Number of results to return")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
+    user_context: Optional[Dict[str, Any]] = Field(
+        default=None, description="Context for delegated authentication"
+    )
 
 
 class Hit(BaseModel):
@@ -55,15 +59,21 @@ class Hit(BaseModel):
         score: The relevance score of the hit.
         source_strategy: The strategy that found this hit.
         metadata: Associated metadata.
+        source_pointer: Pointer to external data source.
+        acls: Access Control List.
     """
 
     doc_id: str
-    content: str
-    original_text: str = Field(..., description="Full text")
+    content: Optional[str] = None
+    original_text: Optional[str] = Field(default=None, description="Full text")
     distilled_text: str = Field(..., description="Post-Scout text")
     score: float
     source_strategy: str  # "dense" or "sparse"
     metadata: Dict[str, Any]
+    source_pointer: Optional[Dict[str, str]] = Field(
+        default=None, description="Pointer to external data source"
+    )
+    acls: List[str] = Field(default_factory=list, description="Access Control List")
 
 
 class SearchResponse(BaseModel):

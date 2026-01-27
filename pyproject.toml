@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coreason_search"
-version = "0.2.0"
+version = "0.3.0"
 description = "coreason-search"
 authors = ["Gowtham A Rao <gowtham.rao@coreason.ai>"]
 license = "Prosperity-3.0"
@@ -40,7 +40,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "coreason_search"
-version = "0.2.0"
+version = "0.3.0"
 description = "coreason-search"
 readme = "README.md"
 requires-python = ">=3.11"
