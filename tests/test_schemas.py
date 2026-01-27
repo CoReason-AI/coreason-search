@@ -52,6 +52,7 @@ def test_search_request_defaults() -> None:
     assert req.distill_enabled is True
     assert req.top_k == 5
     assert req.filters is None
+    assert req.user_context is None
 
 
 def test_search_request_validation() -> None:
@@ -85,6 +86,13 @@ def test_search_request_complex_types() -> None:
     assert req_filters.filters == complex_filters
 
 
+def test_search_request_user_context() -> None:
+    """Test SearchRequest with user_context."""
+    context = {"user_id": "u123", "roles": ["admin"]}
+    req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], user_context=context)
+    assert req.user_context == context
+
+
 def test_hit_schema() -> None:
     """Test Hit schema structure."""
     hit = Hit(
@@ -100,6 +108,27 @@ def test_hit_schema() -> None:
     assert hit.original_text == "full text original"
     assert hit.distilled_text == "distilled"
     assert hit.metadata["year"] == 2024
+    assert hit.source_pointer is None
+    assert hit.acls == []
+
+
+def test_hit_pointer_schema() -> None:
+    """Test Hit schema as a pointer (Zero-Copy)."""
+    hit = Hit(
+        doc_id="123",
+        # content and original_text omitted (should be None)
+        distilled_text="distilled",
+        score=0.95,
+        source_strategy="dense",
+        metadata={},
+        source_pointer={"uri": "s3://bucket/key"},
+        acls=["group:eng"],
+    )
+    assert hit.doc_id == "123"
+    assert hit.content is None
+    assert hit.original_text is None
+    assert hit.source_pointer == {"uri": "s3://bucket/key"}
+    assert hit.acls == ["group:eng"]
 
 
 def test_hit_edge_cases() -> None:

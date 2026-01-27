@@ -11,7 +11,7 @@
 import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from coreason_search.config import ScoutConfig
 from coreason_search.schemas import Hit
@@ -27,13 +27,27 @@ UNIT_NORMALIZATION_REGEX = re.compile(r"[^\w\s]")
 class BaseScout(ABC):
     """Abstract base class for The Scout (Context Distiller)."""
 
+    def __init__(
+        self,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[Dict[str, Any]]], str]] = None,
+    ) -> None:
+        """Initialize the Scout.
+
+        Args:
+            content_fetcher: Optional callable to fetch content via source_pointer.
+        """
+        self.content_fetcher = content_fetcher
+
     @abstractmethod
-    def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
+    def distill(
+        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[Dict[str, Any]] = None
+    ) -> List[Hit]:
         """Distill the content of the hits, removing irrelevant parts.
 
         Args:
             query: The user query.
             hits: The list of hits to process.
+            user_context: Context for delegated authentication.
 
         Returns:
             List[Hit]: The list of hits with 'distilled_text' populated/updated.
@@ -48,15 +62,23 @@ class MockScout(BaseScout):
     using deterministic heuristics for testing.
     """
 
-    def __init__(self, config: Optional[ScoutConfig] = None):
+    def __init__(
+        self,
+        config: Optional[ScoutConfig] = None,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[Dict[str, Any]]], str]] = None,
+    ):
         """Initialize the Mock Scout.
 
         Args:
             config: Configuration for the scout.
+            content_fetcher: Optional callable to fetch content via source_pointer.
         """
+        super().__init__(content_fetcher)
         self.config = config or ScoutConfig()
 
-    def distill(self, query: Union[str, Dict[str, str]], hits: List[Hit]) -> List[Hit]:
+    def distill(
+        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[Dict[str, Any]] = None
+    ) -> List[Hit]:
         """Mock distillation.
 
         1. Segment text into sentences.
@@ -66,6 +88,7 @@ class MockScout(BaseScout):
         Args:
             query: The user query.
             hits: The list of hits to process.
+            user_context: Context for delegated authentication.
 
         Returns:
             List[Hit]: The list of hits with distilled content.
@@ -79,6 +102,11 @@ class MockScout(BaseScout):
             # Create a copy of the hit
             new_hit = hit.model_copy()
             original_text = hit.original_text
+
+            # Zero-Copy / Ephemeral Fetching
+            if not original_text and self.content_fetcher and hit.source_pointer:
+                original_text = self.content_fetcher(hit.source_pointer, user_context)
+                # NOTE: We do NOT assign this to new_hit.original_text
 
             if not original_text:
                 new_hit.distilled_text = ""

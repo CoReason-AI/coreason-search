@@ -46,6 +46,7 @@ class TestGraphTraversal2Hop:
         # Assertion: Should only return 1 hit (Paper A)
         assert len(hits) == 1
         assert hits[0].doc_id == "paper_a"
+        assert hits[0].content is not None
         assert "liver failure" in hits[0].content
 
         # Metadata Enrichment Check
