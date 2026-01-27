@@ -15,7 +15,7 @@ from coreason_search.scout import MockScout, reset_scout
 
 
 class TestEngineConfig:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def reset_singletons(self) -> Generator[None, None, None]:
         reset_db_manager()
         reset_embedder()

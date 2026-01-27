@@ -33,7 +33,7 @@ class LegacyDocumentSchema(LanceModel):  # type: ignore[misc]
 
 
 class TestDBEdgeCases:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, tmp_path: Path) -> Generator[None, None, None]:
         # Reset singleton before each test
         reset_db_manager()

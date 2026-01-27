@@ -20,7 +20,7 @@ from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
 
 
 class TestLanceDBManager:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, tmp_path: Path) -> Generator[None, None, None]:
         # Reset singleton before each test
         reset_db_manager()

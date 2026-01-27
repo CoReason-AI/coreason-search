@@ -267,7 +267,7 @@ class SearchEngine:
 
     def execute(self, request: SearchRequest) -> SearchResponse:
         """Execute search synchronously."""
-        return anyio.run(self._async.execute, request)  # type: ignore[no-any-return]
+        return anyio.run(self._async.execute, request)
 
     def execute_systematic(self, request: SearchRequest) -> Iterator[Hit]:
         """Execute systematic search synchronously.

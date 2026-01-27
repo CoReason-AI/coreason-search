@@ -8,7 +8,7 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union, cast
 
 import numpy as np
 
@@ -98,4 +98,4 @@ class HuggingFaceEmbedder(BaseEmbedder):
             show_progress_bar=False,
         )
 
-        return embeddings
+        return cast(np.ndarray, embeddings)

@@ -21,7 +21,7 @@ from coreason_search.veritas import reset_veritas_client
 
 
 class TestComplexSystematic:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
         db_path = str(tmp_path) + "/lancedb_complex"
         reset_db_manager()
