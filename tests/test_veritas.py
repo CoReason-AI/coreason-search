@@ -17,7 +17,7 @@ from coreason_search.veritas import MockVeritasClient, get_veritas_client, reset
 
 
 class TestVeritas:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self) -> Generator[None, None, None]:
         reset_veritas_client()
         yield

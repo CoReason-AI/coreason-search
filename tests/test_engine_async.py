@@ -22,7 +22,7 @@ from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchRes
 
 
 class TestSearchEngineAsync:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, tmp_path: str) -> Generator[None, None, None]:
         self.db_path = str(tmp_path) + "/lancedb_engine"
         reset_db_manager()
@@ -62,7 +62,7 @@ class TestSearchEngineAsync:
         except Exception:
             pass
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_execute_standard_flow(self) -> None:
         """Test standard RAG execution flow."""
         self._seed_db()
@@ -86,7 +86,7 @@ class TestSearchEngineAsync:
             if matched_hit:
                 assert matched_hit.distilled_text == "Apple pie"
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_execute_systematic_flow(self) -> None:
         """Test systematic search generator."""
         self._seed_db()
@@ -104,7 +104,7 @@ class TestSearchEngineAsync:
             assert len(results) >= 1
             assert results[0].doc_id == "1"
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_execute_systematic_audit(self) -> None:
         """Test systematic search execution with audit logging."""
         self._seed_db()
@@ -147,7 +147,7 @@ class TestSearchEngineAsync:
             assert complete_call[0][0] == "SYSTEMATIC_SEARCH_COMPLETE"
             assert complete_call[0][1]["total_found"] == 1
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_execute_systematic_audit_exception(self) -> None:
         """Test systematic search audit fallback when DB version fails."""
         self._seed_db()
@@ -167,7 +167,7 @@ class TestSearchEngineAsync:
             assert start_call[0][0] == "SYSTEMATIC_SEARCH_START"
             assert start_call[0][1]["snapshot_id"] == -1
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_unknown_strategy_and_error_handling(self) -> None:
         """Test that unknown strategies are handled gracefully."""
         self._seed_db()
@@ -184,7 +184,7 @@ class TestSearchEngineAsync:
             sources = {h.source_strategy for h in response.hits}
             assert "graph_neighbor" in sources
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_fusion_disabled(self) -> None:
         """Test execution with fusion disabled."""
         self._seed_db()
@@ -200,7 +200,7 @@ class TestSearchEngineAsync:
             response = await engine.execute(request)
             assert len(response.hits) >= 1
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_rerank_distill_disabled(self) -> None:
         """Test disabling rerank and distill."""
         self._seed_db()
@@ -214,7 +214,7 @@ class TestSearchEngineAsync:
             assert len(response.hits) >= 1
             assert response.hits[0].distilled_text == ""
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_systematic_dense_warning(self) -> None:
         """Test systematic search with dense strategy (should work but fallback)."""
         self._seed_db()
@@ -229,7 +229,7 @@ class TestSearchEngineAsync:
                 results.append(hit)
             assert len(results) >= 1
 
-    @pytest.mark.asyncio  # type: ignore[misc]
+    @pytest.mark.asyncio
     async def test_strategy_exception_handling(self) -> None:
         """Test that exceptions in strategies are caught and logged."""
         self._seed_db()

@@ -17,7 +17,7 @@ from coreason_search.schemas import Hit
 
 
 class TestReranker:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self) -> Generator[None, None, None]:
         reset_reranker()
         yield

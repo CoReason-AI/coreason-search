@@ -16,7 +16,7 @@ from coreason_search.db import get_db_manager, reset_db_manager
 from coreason_search.embedder import reset_embedder
 
 
-@pytest.fixture  # type: ignore[misc]
+@pytest.fixture
 def setup_teardown_db_and_embedder(tmp_path: str) -> Generator[None, None, None]:
     """Shared fixture to setup DB and Embedder."""
     db_path = str(tmp_path) + "/lancedb_shared"
