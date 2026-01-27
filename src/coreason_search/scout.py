@@ -11,8 +11,9 @@
 import re
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 
+from coreason_identity.models import UserContext
 from coreason_search.config import ScoutConfig
 from coreason_search.schemas import Hit
 from coreason_search.utils.common import extract_query_text
@@ -29,7 +30,7 @@ class BaseScout(ABC):
 
     def __init__(
         self,
-        content_fetcher: Optional[Callable[[Dict[str, str], Optional[Dict[str, Any]]], str]] = None,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], str]] = None,
     ) -> None:
         """Initialize the Scout.
 
@@ -40,7 +41,7 @@ class BaseScout(ABC):
 
     @abstractmethod
     def distill(
-        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[Dict[str, Any]] = None
+        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[UserContext] = None
     ) -> List[Hit]:
         """Distill the content of the hits, removing irrelevant parts.
 
@@ -65,7 +66,7 @@ class MockScout(BaseScout):
     def __init__(
         self,
         config: Optional[ScoutConfig] = None,
-        content_fetcher: Optional[Callable[[Dict[str, str], Optional[Dict[str, Any]]], str]] = None,
+        content_fetcher: Optional[Callable[[Dict[str, str], Optional[UserContext]], str]] = None,
     ):
         """Initialize the Mock Scout.
 
@@ -77,7 +78,7 @@ class MockScout(BaseScout):
         self.config = config or ScoutConfig()
 
     def distill(
-        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[Dict[str, Any]] = None
+        self, query: Union[str, Dict[str, str]], hits: List[Hit], user_context: Optional[UserContext] = None
     ) -> List[Hit]:
         """Mock distillation.
 

@@ -9,6 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import pytest
+from coreason_identity.models import UserContext
 from pydantic import ValidationError
 
 from coreason_search.config import EmbeddingConfig
@@ -88,7 +89,7 @@ def test_search_request_complex_types() -> None:
 
 def test_search_request_user_context() -> None:
     """Test SearchRequest with user_context."""
-    context = {"user_id": "u123", "roles": ["admin"]}
+    context = UserContext(sub="u123", email="test@example.com", permissions=["admin"])
     req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], user_context=context)
     assert req.user_context == context
 

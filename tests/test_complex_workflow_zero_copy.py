@@ -12,6 +12,7 @@ from typing import Any, Dict, Generator, Optional
 from unittest.mock import MagicMock
 
 import pytest
+from coreason_identity.models import UserContext
 
 from coreason_search.config import Settings
 from coreason_search.db import get_db_manager, reset_db_manager
@@ -59,8 +60,8 @@ class TestComplexWorkflowZeroCopy:
         # 1. Setup DB with Pointer Hits (mocked via Retriever override)
         # We can mock the retriever to return a hit without text but with pointer.
 
-        def secure_fetcher(ptr: Dict[str, str], ctx: Optional[Dict[str, Any]]) -> Optional[str]:
-            if ctx and ctx.get("token") == "valid":
+        def secure_fetcher(ptr: Dict[str, str], ctx: Optional[UserContext]) -> Optional[str]:
+            if ctx and "valid_token" in ctx.permissions:
                 if ptr.get("id") == "secret":
                     return "This is top secret content."
             return None
@@ -84,7 +85,7 @@ class TestComplexWorkflowZeroCopy:
         req_valid = SearchRequest(
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
-            user_context={"token": "valid"},
+            user_context=UserContext(sub="user", email="user@example.com", permissions=["valid_token"]),
             distill_enabled=True,
         )
 
@@ -103,7 +104,7 @@ class TestComplexWorkflowZeroCopy:
         req_invalid = SearchRequest(
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
-            user_context={"token": "hacker"},
+            user_context=UserContext(sub="hacker", email="hacker@example.com", permissions=["hacker_token"]),
             distill_enabled=True,
         )
 
@@ -122,7 +123,7 @@ class TestComplexWorkflowZeroCopy:
         Redundant test to ensure multiple strategies + fusion + JIT works together.
         """
 
-        def simple_fetcher(ptr: Dict[str, str], ctx: Optional[Dict[str, Any]]) -> str:
+        def simple_fetcher(ptr: Dict[str, str], ctx: Optional[UserContext]) -> str:
             return f"Fetched content for {ptr.get('id')}"
 
         engine = self._get_engine(simple_fetcher)

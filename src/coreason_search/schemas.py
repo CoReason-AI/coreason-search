@@ -11,6 +11,7 @@
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
+from coreason_identity.models import UserContext
 from pydantic import BaseModel, Field
 
 
@@ -43,7 +44,7 @@ class SearchRequest(BaseModel):
     distill_enabled: bool = Field(default=True, description="Enable The Scout context distillation")
     top_k: int = Field(default=5, gt=0, description="Number of results to return")
     filters: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filters")
-    user_context: Optional[Dict[str, Any]] = Field(default=None, description="Context for delegated authentication")
+    user_context: Optional[UserContext] = Field(default=None, description="Canonical identity passport")
 
 
 class Hit(BaseModel):
