@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 import pytest
 
 from coreason_search.schemas import Hit
-from coreason_search.scout import MockScout, get_scout, reset_scout
+from coreason_search.scout import MockScout, reset_scout
 
 
 class TestZeroCopyEdgeCases:
@@ -37,7 +37,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer={"id": "1"}
+            source_pointer={"id": "1"},
         )
 
         with pytest.raises(ValueError, match="Fetcher exploded"):
@@ -49,7 +49,7 @@ class TestZeroCopyEdgeCases:
         def none_fetcher(ptr: Dict[str, str], ctx: Optional[Dict[str, Any]]) -> Any:
             return None  # Type hint says str, but runtime might return None
 
-        scout = MockScout(content_fetcher=none_fetcher) # type: ignore
+        scout = MockScout(content_fetcher=none_fetcher)
         hit = Hit(
             doc_id="1",
             content=None,
@@ -58,7 +58,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer={"id": "1"}
+            source_pointer={"id": "1"},
         )
 
         results = scout.distill(query="test", hits=[hit])
@@ -81,7 +81,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer={"id": "1"}
+            source_pointer={"id": "1"},
         )
 
         results = scout.distill(query="test", hits=[hit])
@@ -99,7 +99,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer=None # No pointer
+            source_pointer=None,  # No pointer
         )
 
         results = scout.distill(query="test", hits=[hit])
@@ -124,7 +124,7 @@ class TestZeroCopyEdgeCases:
             distilled_text="",
             score=1.0,
             source_strategy="s",
-            metadata={}
+            metadata={},
         )
 
         hit_pointer = Hit(
@@ -135,7 +135,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer={"id": "pointer"}
+            source_pointer={"id": "pointer"},
         )
 
         hit_broken = Hit(
@@ -146,7 +146,7 @@ class TestZeroCopyEdgeCases:
             score=1.0,
             source_strategy="s",
             metadata={},
-            source_pointer={"id": "broken"} # returns empty
+            source_pointer={"id": "broken"},  # returns empty
         )
 
         # Query matches "content"

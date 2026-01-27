@@ -14,10 +14,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from coreason_search.config import Settings
-from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
-from coreason_search.embedder import get_embedder, reset_embedder
+from coreason_search.db import get_db_manager, reset_db_manager
+from coreason_search.embedder import reset_embedder
 from coreason_search.engine import SearchEngineAsync
-from coreason_search.schemas import Hit, RetrieverType, SearchRequest, SearchResponse
+from coreason_search.schemas import Hit, RetrieverType, SearchRequest
 from coreason_search.scout import MockScout
 
 
@@ -76,16 +76,16 @@ class TestComplexWorkflowZeroCopy:
             score=0.9,
             source_strategy="dense",
             metadata={},
-            source_pointer={"id": "secret"}
+            source_pointer={"id": "secret"},
         )
-        engine.dense_retriever.retrieve = MagicMock(return_value=[pointer_hit]) # type: ignore
+        engine.dense_retriever.retrieve = MagicMock(return_value=[pointer_hit])  # type: ignore
 
         # 2. Execute with VALID Token
         req_valid = SearchRequest(
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
             user_context={"token": "valid"},
-            distill_enabled=True
+            distill_enabled=True,
         )
 
         async with engine:
@@ -104,7 +104,7 @@ class TestComplexWorkflowZeroCopy:
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
             user_context={"token": "hacker"},
-            distill_enabled=True
+            distill_enabled=True,
         )
 
         async with engine:
@@ -121,6 +121,7 @@ class TestComplexWorkflowZeroCopy:
         """
         Redundant test to ensure multiple strategies + fusion + JIT works together.
         """
+
         def simple_fetcher(ptr: Dict[str, str], ctx: Optional[Dict[str, Any]]) -> str:
             return f"Fetched content for {ptr.get('id')}"
 
@@ -128,23 +129,35 @@ class TestComplexWorkflowZeroCopy:
 
         # Mock Dense (Pointer 1)
         h1 = Hit(
-            doc_id="d1", content=None, original_text=None, distilled_text="",
-            score=0.9, source_strategy="dense", metadata={}, source_pointer={"id": "d1"}
+            doc_id="d1",
+            content=None,
+            original_text=None,
+            distilled_text="",
+            score=0.9,
+            source_strategy="dense",
+            metadata={},
+            source_pointer={"id": "d1"},
         )
-        engine.dense_retriever.retrieve = MagicMock(return_value=[h1]) # type: ignore
+        engine.dense_retriever.retrieve = MagicMock(return_value=[h1])  # type: ignore
 
         # Mock Sparse (Pointer 2)
         h2 = Hit(
-            doc_id="d2", content=None, original_text=None, distilled_text="",
-            score=0.8, source_strategy="sparse", metadata={}, source_pointer={"id": "d2"}
+            doc_id="d2",
+            content=None,
+            original_text=None,
+            distilled_text="",
+            score=0.8,
+            source_strategy="sparse",
+            metadata={},
+            source_pointer={"id": "d2"},
         )
-        engine.sparse_retriever.retrieve = MagicMock(return_value=[h2]) # type: ignore
+        engine.sparse_retriever.retrieve = MagicMock(return_value=[h2])  # type: ignore
 
         req = SearchRequest(
             query="content",
             strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],
             fusion_enabled=True,
-            distill_enabled=True
+            distill_enabled=True,
         )
 
         async with engine:
