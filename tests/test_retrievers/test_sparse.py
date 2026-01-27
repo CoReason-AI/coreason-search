@@ -21,7 +21,7 @@ from coreason_search.schemas import RetrieverType, SearchRequest
 
 
 class TestSparseRetriever:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self, setup_teardown_db_and_embedder: None) -> None:
         """Use shared fixture from conftest."""
         pass

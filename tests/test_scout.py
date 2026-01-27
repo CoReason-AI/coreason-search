@@ -17,7 +17,7 @@ from coreason_search.scout import MockScout, get_scout, reset_scout
 
 
 class TestScout:
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_teardown(self) -> Generator[None, None, None]:
         reset_scout()
         yield
