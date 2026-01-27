@@ -13,6 +13,7 @@ from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from coreason_identity.models import UserContext
 
 from coreason_search.config import Settings
 from coreason_search.db import DocumentSchema, get_db_manager, reset_db_manager
@@ -258,7 +259,7 @@ class TestSearchEngineAsync:
         self._seed_db()
         engine = self._get_engine()
 
-        user_context = {"role": "admin"}
+        user_context = UserContext(sub="admin", email="admin@example.com", permissions=["admin"])
         request = SearchRequest(
             query="apple", strategies=[RetrieverType.LANCE_DENSE], user_context=user_context, distill_enabled=True
         )

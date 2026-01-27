@@ -165,6 +165,7 @@ class SearchRequest(BaseModel):
     distill\_enabled: bool \= True      \# Enable The Scout?
     top\_k: int \= 5
     filters: Optional\[Dict\[str, Any\]\] \# {"year": {"$gt": 2024}}
+    user_context: Optional\[UserContext\] \# Canonical identity passport
 
 ### **SearchResult**
 
