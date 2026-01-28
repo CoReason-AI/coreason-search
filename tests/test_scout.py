@@ -256,7 +256,7 @@ class TestScout:
         # Mock Fetcher
         def mock_fetcher(source_pointer: Dict[str, str], user_context: Optional[UserContext]) -> str:
             # Verify we received the context
-            if user_context and "secret_key" in user_context.permissions:
+            if user_context and "secret_key" in user_context.scopes:
                 return "Secret content is here. It is safe."
             return "Public content."
 
@@ -276,7 +276,7 @@ class TestScout:
         )
 
         # 1. Test with authorized context
-        user_context = UserContext(sub="u", email="u@e.com", permissions=["secret_key"])
+        user_context = UserContext(user_id="u", email="u@e.com", scopes=["secret_key"])
         results = scout.distill(query="Secret", hits=[hit], user_context=user_context)
 
         assert len(results) == 1
