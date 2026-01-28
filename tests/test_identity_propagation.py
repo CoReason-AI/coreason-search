@@ -56,7 +56,7 @@ class TestIdentityPropagation:
         engine.dense_retriever.retrieve = MagicMock(return_value=[hit])  # type: ignore
 
         # Context
-        ctx = UserContext(sub="prop_user", email="prop@co.ai")
+        ctx = UserContext(user_id="prop_user", email="prop@co.ai")
         req = SearchRequest(
             query="test", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx, distill_enabled=True
         )
@@ -74,7 +74,7 @@ class TestIdentityPropagation:
 
             assert passed_ctx is not None
             assert isinstance(passed_ctx, UserContext)
-            assert passed_ctx.sub == "prop_user"
+            assert passed_ctx.user_id == "prop_user"
             # Ideally it's the same object (unless copied somewhere)
             # Pydantic models might be copied if validation runs again, but here it's passed through.
             assert passed_ctx == ctx
@@ -107,7 +107,7 @@ class TestIdentityPropagation:
         engine.dense_retriever.retrieve = MagicMock(return_value=[h1])  # type: ignore
         engine.sparse_retriever.retrieve = MagicMock(return_value=[h2])  # type: ignore
 
-        ctx = UserContext(sub="fusion_user", email="f@co.ai")
+        ctx = UserContext(user_id="fusion_user", email="f@co.ai")
         req = SearchRequest(
             query="test",
             strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],

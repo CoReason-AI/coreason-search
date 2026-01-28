@@ -58,9 +58,9 @@ class TestIdentityAwareRetrieval:
             if not ctx:
                 return "Public Abstract"
 
-            if ctx.project_context == "Project_A":
+            if ctx.claims.get("project_context") == "Project_A":
                 return f"Project A Content for {doc_id}"
-            elif ctx.project_context == "Project_B":
+            elif ctx.claims.get("project_context") == "Project_B":
                 return f"Project B Content for {doc_id}"
 
             return "Public Abstract"
@@ -81,7 +81,7 @@ class TestIdentityAwareRetrieval:
         engine.dense_retriever.retrieve = MagicMock(return_value=[pointer_hit])  # type: ignore
 
         # 3. Test Project A Context
-        ctx_a = UserContext(sub="user_a", email="a@co.ai", project_context="Project_A")
+        ctx_a = UserContext(user_id="user_a", email="a@co.ai", claims={"project_context": "Project_A"})
         # Query matches "Content" which is in the returned text
         req_a = SearchRequest(query="Content", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx_a)
 
@@ -91,7 +91,7 @@ class TestIdentityAwareRetrieval:
             assert "Project B Content" not in res_a.hits[0].distilled_text
 
         # 4. Test Project B Context
-        ctx_b = UserContext(sub="user_b", email="b@co.ai", project_context="Project_B")
+        ctx_b = UserContext(user_id="user_b", email="b@co.ai", claims={"project_context": "Project_B"})
         req_b = SearchRequest(query="Content", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx_b)
 
         async with engine:
@@ -106,7 +106,7 @@ class TestIdentityAwareRetrieval:
         """
 
         def auth_fetcher(ptr: Dict[str, str], ctx: Optional[UserContext]) -> Optional[str]:
-            if ctx and "CLASSIFIED" in ctx.permissions:
+            if ctx and "CLASSIFIED" in ctx.scopes:
                 return "Classified Data"
             return None  # Or "Redacted"
 
@@ -125,7 +125,7 @@ class TestIdentityAwareRetrieval:
         engine.dense_retriever.retrieve = MagicMock(return_value=[pointer_hit])  # type: ignore
 
         # Case 1: Authorized
-        ctx_auth = UserContext(sub="spy", email="spy@agency.gov", permissions=["CLASSIFIED"])
+        ctx_auth = UserContext(user_id="spy", email="spy@agency.gov", scopes=["CLASSIFIED"])
         req_auth = SearchRequest(query="data", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx_auth)
 
         async with engine:
@@ -133,7 +133,7 @@ class TestIdentityAwareRetrieval:
             assert "Classified Data" in res_auth.hits[0].distilled_text
 
         # Case 2: Unauthorized
-        ctx_civilian = UserContext(sub="civ", email="civ@public.com", permissions=[])
+        ctx_civilian = UserContext(user_id="civ", email="civ@public.com", scopes=[])
         req_civ = SearchRequest(query="data", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx_civilian)
 
         async with engine:
