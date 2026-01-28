@@ -259,7 +259,7 @@ class TestSearchEngineAsync:
         self._seed_db()
         engine = self._get_engine()
 
-        user_context = UserContext(sub="admin", email="admin@example.com", permissions=["admin"])
+        user_context = UserContext(user_id="admin", email="admin@example.com", scopes=["admin"])
         request = SearchRequest(
             query="apple", strategies=[RetrieverType.LANCE_DENSE], user_context=user_context, distill_enabled=True
         )

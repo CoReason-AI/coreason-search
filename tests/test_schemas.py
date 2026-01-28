@@ -89,7 +89,7 @@ def test_search_request_complex_types() -> None:
 
 def test_search_request_user_context() -> None:
     """Test SearchRequest with user_context."""
-    context = UserContext(sub="u123", email="test@example.com", permissions=["admin"])
+    context = UserContext(user_id="u123", email="test@example.com", scopes=["admin"])
     req = SearchRequest(query="test", strategies=[RetrieverType.LANCE_DENSE], user_context=context)
     assert req.user_context == context
 
