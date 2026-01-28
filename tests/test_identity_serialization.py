@@ -18,10 +18,10 @@ from coreason_search.schemas import RetrieverType, SearchRequest
 def test_search_request_serialization() -> None:
     """Test that SearchRequest with UserContext serializes to JSON correctly."""
     ctx = UserContext(
-        sub="user_serial",
+        user_id="user_serial",
         email="serial@co.ai",
-        permissions=["read"],
-        project_context="proj_1",
+        scopes=["read"],
+        claims={"project_context": "proj_1"},
     )
     req = SearchRequest(
         query="test",
@@ -34,10 +34,10 @@ def test_search_request_serialization() -> None:
     data = json.loads(json_str)
 
     assert data["query"] == "test"
-    assert data["user_context"]["sub"] == "user_serial"
+    assert data["user_context"]["user_id"] == "user_serial"
     assert data["user_context"]["email"] == "serial@co.ai"
-    assert data["user_context"]["permissions"] == ["read"]
-    assert data["user_context"]["project_context"] == "proj_1"
+    assert data["user_context"]["scopes"] == ["read"]
+    assert data["user_context"]["claims"]["project_context"] == "proj_1"
 
 
 def test_search_request_deserialization() -> None:
@@ -46,10 +46,10 @@ def test_search_request_deserialization() -> None:
         "query": "test",
         "strategies": ["lance_dense"],
         "user_context": {
-            "sub": "user_deserial",
+            "user_id": "user_deserial",
             "email": "deserial@co.ai",
-            "permissions": ["write"],
-            "project_context": None,
+            "scopes": ["write"],
+            "claims": {},
         },
     }
     json_str = json.dumps(json_data)
@@ -58,14 +58,14 @@ def test_search_request_deserialization() -> None:
     req = SearchRequest.model_validate_json(json_str)
 
     assert isinstance(req.user_context, UserContext)
-    assert req.user_context.sub == "user_deserial"
+    assert req.user_context.user_id == "user_deserial"
     assert req.user_context.email == "deserial@co.ai"
-    assert "write" in req.user_context.permissions
+    assert "write" in req.user_context.scopes
 
 
 def test_search_request_round_trip() -> None:
     """Test full JSON round trip."""
-    ctx = UserContext(sub="u1", email="u1@e.com")
+    ctx = UserContext(user_id="u1", email="u1@e.com")
     req = SearchRequest(query="q", strategies=[RetrieverType.LANCE_DENSE], user_context=ctx)
 
     json_str = req.model_dump_json()
@@ -73,4 +73,4 @@ def test_search_request_round_trip() -> None:
 
     assert req2.user_context == req.user_context
     assert req2.user_context is not None
-    assert req2.user_context.sub == "u1"
+    assert req2.user_context.user_id == "u1"

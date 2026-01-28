@@ -61,7 +61,7 @@ class TestComplexWorkflowZeroCopy:
         # We can mock the retriever to return a hit without text but with pointer.
 
         def secure_fetcher(ptr: Dict[str, str], ctx: Optional[UserContext]) -> Optional[str]:
-            if ctx and "valid_token" in ctx.permissions:
+            if ctx and "valid_token" in ctx.scopes:
                 if ptr.get("id") == "secret":
                     return "This is top secret content."
             return None
@@ -85,7 +85,7 @@ class TestComplexWorkflowZeroCopy:
         req_valid = SearchRequest(
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
-            user_context=UserContext(sub="user", email="user@example.com", permissions=["valid_token"]),
+            user_context=UserContext(user_id="user", email="user@example.com", scopes=["valid_token"]),
             distill_enabled=True,
         )
 
@@ -104,7 +104,7 @@ class TestComplexWorkflowZeroCopy:
         req_invalid = SearchRequest(
             query="secret",
             strategies=[RetrieverType.LANCE_DENSE],
-            user_context=UserContext(sub="hacker", email="hacker@example.com", permissions=["hacker_token"]),
+            user_context=UserContext(user_id="hacker", email="hacker@example.com", scopes=["hacker_token"]),
             distill_enabled=True,
         )
 
