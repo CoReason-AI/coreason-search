@@ -8,18 +8,22 @@
 #
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
-import os
-import pytest
+from pathlib import Path
+from typing import Generator
 from unittest.mock import patch
+
+import pytest
 from fastapi.testclient import TestClient
-from coreason_search.server import app
-from coreason_search.schemas import RetrieverType
+
 from coreason_search.db import reset_db_manager
 from coreason_search.embedder import reset_embedder
+from coreason_search.schemas import RetrieverType
 from coreason_search.scout import reset_scout
+from coreason_search.server import app
+
 
 @pytest.fixture
-def client(monkeypatch, tmp_path):
+def client(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Generator[TestClient, None, None]:
     # Reset singletons before the test
     reset_db_manager()
     reset_embedder()
@@ -39,7 +43,8 @@ def client(monkeypatch, tmp_path):
     reset_embedder()
     reset_scout()
 
-def test_health(client):
+
+def test_health(client: TestClient) -> None:
     """Verify health check endpoint returns correct status and configuration."""
     response = client.get("/health")
     assert response.status_code == 200
@@ -48,7 +53,8 @@ def test_health(client):
     assert data["database"] == "connected"
     assert data["embedder"] == "mock"
 
-def test_search_ad_hoc(client):
+
+def test_search_ad_hoc(client: TestClient) -> None:
     """Verify standard search endpoint accepts request and returns response."""
     request_data = {
         "query": "test query",
@@ -56,7 +62,7 @@ def test_search_ad_hoc(client):
         "top_k": 1,
         "fusion_enabled": False,
         "rerank_enabled": False,
-        "distill_enabled": False
+        "distill_enabled": False,
     }
     response = client.post("/search", json=request_data)
     assert response.status_code == 200
@@ -65,36 +71,38 @@ def test_search_ad_hoc(client):
     assert "provenance_hash" in data
     assert data["total_found"] >= 0
 
-def test_search_systematic(client):
+
+def test_search_systematic(client: TestClient) -> None:
     """Verify systematic search endpoint streams results."""
     request_data = {
         "query": "systematic test",
         "strategies": [RetrieverType.LANCE_DENSE],
-        "top_k": 2
+        "top_k": 2,
     }
     response = client.post("/search/systematic", json=request_data)
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
 
     # Check that we can read the stream (even if empty)
-    content = response.text
+    _ = response.text
     # Mock engine with empty DB returns empty list
     # DenseRetriever returns [] if DB empty?
     # Yes, DB is empty in this test unless we populated it.
     # But the endpoint should work without crashing.
 
-def test_search_systematic_audit(client):
+
+def test_search_systematic_audit(client: TestClient) -> None:
     """Verify systematic search triggers audit event."""
     request_data = {
         "query": "audit test",
         "strategies": [RetrieverType.LANCE_DENSE],
-        "top_k": 1
+        "top_k": 1,
     }
 
     # Access the engine from the app state
     engine = client.app.state.engine
 
-    with patch.object(engine.veritas, 'log_audit') as mock_log:
+    with patch.object(engine.veritas, "log_audit") as mock_log:
         response = client.post("/search/systematic", json=request_data)
         assert response.status_code == 200
 

@@ -19,7 +19,7 @@ from coreason_search.schemas import SearchRequest, SearchResponse
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for initializing resources."""
     # Initialize the engine (loads DB, Embedder, etc.)
     engine = SearchEngineAsync()
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, title="CoReason Search Service (Service L)")
 
 
-@app.post("/search", response_model=SearchResponse)
+@app.post("/search", response_model=SearchResponse)  # type: ignore[untyped-decorator]
 async def search(request: SearchRequest) -> SearchResponse:
     """Ad-Hoc Search Endpoint (RAG).
 
@@ -43,7 +43,7 @@ async def search(request: SearchRequest) -> SearchResponse:
     return await engine.execute(request)
 
 
-@app.post("/search/systematic")
+@app.post("/search/systematic")  # type: ignore[untyped-decorator]
 async def search_systematic(request: SearchRequest) -> StreamingResponse:
     """Systematic Search Endpoint (Review Mode).
 
@@ -59,7 +59,7 @@ async def search_systematic(request: SearchRequest) -> StreamingResponse:
     return StreamingResponse(stream_generator(), media_type="application/x-ndjson")
 
 
-@app.get("/health")
+@app.get("/health")  # type: ignore[untyped-decorator]
 async def health() -> JSONResponse:
     """Health Check Endpoint.
 
@@ -75,8 +75,10 @@ async def health() -> JSONResponse:
     except Exception:  # pragma: no cover
         db_status = "error"
 
-    return JSONResponse({
-        "status": "ready",
-        "database": db_status,
-        "embedder": engine.config.embedding.provider
-    })
+    return JSONResponse(
+        {
+            "status": "ready",
+            "database": db_status,
+            "embedder": engine.config.embedding.provider,
+        }
+    )
