@@ -9,6 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 import json
+import time
 from typing import Iterator
 from unittest.mock import MagicMock
 
@@ -58,7 +59,19 @@ class TestSparseRetriever:
         table.add(docs)
         # Create FTS index for multiple fields
         # Note: tantivy-py is required for multi-field indexing in lancedb
-        table.create_fts_index(["content", "title"], replace=True, use_tantivy=True)
+
+        # Robust index creation for Windows (retry on Access Denied)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                table.create_fts_index(["content", "title"], replace=True, use_tantivy=True)
+                break
+            except ValueError as e:
+                # Catch "Access is denied" (Windows os error 5)
+                if "Access is denied" in str(e) and attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                raise
 
     def test_retrieve_simple(self) -> None:
         """Test simple FTS retrieval."""
