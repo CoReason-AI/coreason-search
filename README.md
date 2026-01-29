@@ -7,10 +7,11 @@ The Unified Retrieval Execution Engine for the CoReason ecosystem.
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Docs](https://img.shields.io/badge/docs-product_requirements-green)](docs/product_requirements.md)
 
-**coreason-search** serves as the "Librarian" of the CoReason architecture, designed to solve three distinct problems: Ad-Hoc Reasoning (RAG), Systematic Evidence Synthesis, and Context Distillation. It adopts a "Late Chunking / No Chunking" philosophy, utilizing SOTA 32k context embeddings to process full documents.
+**coreason-search** (v0.5.0) serves as the "Librarian" of the CoReason architecture, designed to solve three distinct problems: Ad-Hoc Reasoning (RAG), Systematic Evidence Synthesis, and Context Distillation. It functions as **Service L** (Retrieval Execution Microservice), exposing a high-performance REST API.
 
 ## Features
 
+-   **Microservice Architecture (Service L):** Exposes a FastAPI-based REST API for scalable, asynchronous retrieval.
 -   **Long-Context Sovereignty:** Utilizes SOTA embeddings (e.g., Qwen3-Embedding) with 32k context windows to ingest full research papers without "chunk-and-pray" methods.
 -   **Modular Strategy Pattern:** Supports multiple retrieval strategies:
     -   *Dense Retriever:* Vector-based semantic search using LanceDB.
@@ -19,7 +20,7 @@ The Unified Retrieval Execution Engine for the CoReason ecosystem.
 -   **Hybrid Fusion:** Implements Reciprocal Rank Fusion (RRF) to merge results from vector and keyword searches robustly.
 -   **Precision Re-Ranking:** Uses Cross-Encoders to re-rank top results for maximum precision.
 -   **Context Distillation (The Scout):** Compresses documents by stripping irrelevant sentences, maximizing the signal-to-noise ratio for downstream LLMs.
--   **Systematic Search Mode:** Supports "Research-Grade" reproducible reviews with strict boolean logic and generator-based pagination for large result sets.
+-   **Systematic Search Mode:** Supports "Research-Grade" reproducible reviews with strict boolean logic and streaming NDJSON output for large result sets.
 
 ## Installation
 
@@ -27,30 +28,46 @@ The Unified Retrieval Execution Engine for the CoReason ecosystem.
 pip install coreason-search
 ```
 
-## Usage
+## Server Mode (Service L)
+
+Run the service using Uvicorn or Docker:
+
+```bash
+# Local
+uvicorn coreason_search.server:app --host 0.0.0.0 --port 8000
+
+# Docker
+docker run -p 8000:8000 -v /tmp/lancedb:/tmp/lancedb coreason-search:latest
+```
+
+See [Usage Guide](docs/usage.md) for API details.
+
+## Library Usage
 
 ```python
 from coreason_search.engine import SearchEngine
 from coreason_search.schemas import SearchRequest, RetrieverType
 
 # Initialize the engine (loads configuration automatically)
-engine = SearchEngine()
+# Use 'with' to ensure resource cleanup
+with SearchEngine() as engine:
+    # Define a search request
+    request = SearchRequest(
+        query="mechanism of action of aspirin in liver failure",
+        strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],
+        fusion_enabled=True,
+        rerank_enabled=True,
+        distill_enabled=True,
+        top_k=5
+    )
 
-# Define a search request
-request = SearchRequest(
-    query="mechanism of action of aspirin in liver failure",
-    strategies=[RetrieverType.LANCE_DENSE, RetrieverType.LANCE_FTS],
-    fusion_enabled=True,
-    rerank_enabled=True,
-    distill_enabled=True,
-    top_k=5
-)
+    # Execute the search
+    response = engine.execute(request)
 
-# Execute the search
-response = engine.search(request)
-
-# Process results
-for hit in response.hits:
-    print(f"[{hit.score:.4f}] {hit.doc_id}")
-    print(f"Distilled Context: {hit.distilled_text}\n")
+    # Process results
+    for hit in response.hits:
+        print(f"[{hit.score:.4f}] {hit.doc_id}")
+        print(f"Distilled Context: {hit.distilled_text}\n")
 ```
+
+For more details, see [Requirements](docs/requirements.md) and [Usage](docs/usage.md).

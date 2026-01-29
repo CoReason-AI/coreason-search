@@ -35,3 +35,9 @@ COPY --from=builder /wheels /wheels
 
 # Install the application wheel
 RUN pip install --no-cache-dir /wheels/*.whl
+
+# Expose the persistence volume
+VOLUME ["/tmp/lancedb"]
+
+# Start the server
+CMD ["uvicorn", "coreason_search.server:app", "--host", "0.0.0.0", "--port", "8000"]
