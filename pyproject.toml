@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "coreason_search"
-version = "0.4.1"
+version = "0.5.0"
 description = "coreason-search"
 authors = ["Gowtham A Rao <gowtham.rao@coreason.ai>"]
 license = "Prosperity-3.0"
@@ -9,6 +9,8 @@ packages = [{include = "coreason_search", from = "src"}]
 
 [tool.poetry.dependencies]
 anyio = "^4.12.1"
+fastapi = "^0.115.0"
+uvicorn = "^0.27.0"
 httpx = "^0.28.1"
 aiofiles = "^25.1.0"
 python = ">=3.12, <3.15"
@@ -40,7 +42,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "coreason_search"
-version = "0.4.1"
+version = "0.5.0"
 description = "coreason-search"
 readme = "README.md"
 requires-python = ">=3.11"
