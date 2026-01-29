@@ -9,7 +9,7 @@
 # Source Code: https://github.com/CoReason-AI/coreason_search
 
 from pathlib import Path
-from typing import Generator
+from typing import Any, AsyncGenerator, Generator
 from unittest.mock import patch
 
 import pytest
@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 from coreason_search.db import reset_db_manager
 from coreason_search.embedder import reset_embedder
-from coreason_search.schemas import RetrieverType
+from coreason_search.schemas import Hit, RetrieverType
 from coreason_search.scout import reset_scout
 from coreason_search.server import app
 
@@ -79,16 +79,29 @@ def test_search_systematic(client: TestClient) -> None:
         "strategies": [RetrieverType.LANCE_DENSE],
         "top_k": 2,
     }
-    response = client.post("/search/systematic", json=request_data)
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "application/x-ndjson"
 
-    # Check that we can read the stream (even if empty)
-    _ = response.text
-    # Mock engine with empty DB returns empty list
-    # DenseRetriever returns [] if DB empty?
-    # Yes, DB is empty in this test unless we populated it.
-    # But the endpoint should work without crashing.
+    # Mock execute_systematic to yield a hit to ensure coverage of the generator loop
+    engine = client.app.state.engine
+    dummy_hit = Hit(
+        doc_id="1",
+        distilled_text="test",
+        score=1.0,
+        source_strategy="dense",
+        metadata={"title": "test"},
+    )
+
+    # Use a real async generator mock
+    async def mock_generator(req: Any) -> AsyncGenerator[Hit, None]:
+        yield dummy_hit
+
+    with patch.object(engine, "execute_systematic", side_effect=mock_generator):
+        response = client.post("/search/systematic", json=request_data)
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/x-ndjson"
+
+        # Check that we can read the stream and it contains the hit
+        content = response.text
+        assert "test" in content
 
 
 def test_search_systematic_audit(client: TestClient) -> None:
@@ -118,3 +131,14 @@ def test_search_systematic_audit(client: TestClient) -> None:
         start_call = [c for c in mock_log.call_args_list if c[0][0] == "SYSTEMATIC_SEARCH_START"][0]
         event_data = start_call[0][1]
         assert event_data["query"] == "audit test"
+
+
+def test_health_disconnected(client: TestClient) -> None:
+    """Verify health check returns disconnected when DB is not ready."""
+    engine = client.app.state.engine
+    # Mock the DB connection being None
+    with patch.object(engine.db_manager, "db", None):
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["database"] == "disconnected"
